@@ -1,7 +1,0 @@
-[workspace]
-members = [
-    "registry",
-    "orionv3d",
-    "protocol"
-]
-resolver = "2"
