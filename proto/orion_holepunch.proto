@@ -23,7 +23,7 @@ message HolePunchingInitializationResponse {
 
 // Message send to inform that the information was gathered by the registry server
 message HolePunchingCompleteResponse {
-    string endpoint = 1;
+    string client_endpoint = 1;
 }
 
 // Message after the connection of the client to the holepunching-dedicated server endpoint.
