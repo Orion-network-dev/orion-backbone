@@ -3,50 +3,54 @@ package internal
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"net"
 	"time"
 
 	"github.com/MatthieuCoder/OrionV3/internal/proto"
 	"golang.zx2c4.com/wireguard/wgctrl"
 
+	"github.com/rs/zerolog/log"
 	"github.com/vishvananda/netlink"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-type OrionHolePunchingImplementations struct {
-	WgClient *wgctrl.Client
+type OrionHolePunchingImplementation struct {
+	wgClient      *wgctrl.Client
+	tasksAssigner LockableTasks
 	proto.UnimplementedHolePunchingServiceServer
 }
 
-type WireguardNetLink struct {
-	netlink.Link
-	Id     int
-	Prefix string
-}
-
-func (r WireguardNetLink) Type() string {
-	return "wireguard"
-}
-
-func (r WireguardNetLink) Attrs() *netlink.LinkAttrs {
-	return &netlink.LinkAttrs{
-		Name: fmt.Sprintf("%s%d", r.Prefix, r.Id),
+func NewOrionHolePunchingImplementations() (*OrionHolePunchingImplementation, error) {
+	wg, err := wgctrl.New()
+	if err != nil {
+		log.Error().Err(err).Msg("failed to initialize the wireguard control system")
+		return nil, err
 	}
+
+	log.Info().Msg("initialized the Orion hole-punching api implementation")
+	return &OrionHolePunchingImplementation{
+		wgClient:      wg,
+		tasksAssigner: NewLockableTasks(255),
+	}, nil
 }
 
-func (r OrionHolePunchingImplementations) Session(sessionInit *proto.HolePunchingInitialize, sessionServer proto.HolePunchingService_SessionServer) error {
+func (r *OrionHolePunchingImplementation) Session(sessionInit *proto.HolePunchingInitialize, sessionServer proto.HolePunchingService_SessionServer) error {
+	log.Debug().Msg("handling a hole-punching request")
+
+	task, err := r.tasksAssigner.AssignSessionId(sessionServer.Context())
+	if err != nil {
+		return err
+	}
+	defer task.Release()
+
+	// Parameters for the new wireguard tunnel instance used for hole-punching.
+	device := wgtypes.Config{}
+
 	// Generate a new preshared key for this link
 	presharedKey, err := wgtypes.GenerateKey()
 	if err != nil {
 		return err
 	}
-
-	// Generating an id for our client.
-	id := rand.Int() % 255
-
-	// Parameters for the new wireguard tunnel instance used for hole-punching.
-	device := wgtypes.Config{}
 
 	// Add a new peer for the client.
 	device.Peers = append(device.Peers, wgtypes.PeerConfig{
@@ -54,16 +58,14 @@ func (r OrionHolePunchingImplementations) Session(sessionInit *proto.HolePunchin
 		PresharedKey: &presharedKey,
 		AllowedIPs: []net.IPNet{
 			{
-				IP:   net.IPv4(10, 255, byte(id), 0),
+				IP:   net.IPv4(10, 255, byte(task.Id), 0),
 				Mask: net.CIDRMask(31, 32),
 			},
 		},
 	})
 
-	// Specify that we want to replace all the existing peers.
-	device.ReplacePeers = false
 	// Specifying a new port
-	port := 42000 + id
+	port := 42000 + task.Id
 	device.ListenPort = &port
 
 	// Generating a new private key for our tunnel.
@@ -72,46 +74,43 @@ func (r OrionHolePunchingImplementations) Session(sessionInit *proto.HolePunchin
 		return err
 	}
 	device.PrivateKey = &key
-	int_name := fmt.Sprintf("reg%d", id)
-	fmt.Printf("Creating %s\n", int_name)
+	int_name := fmt.Sprintf("reg%d", task.Id)
+	log.Info().Str("interface-name", int_name).Msg("creating interface")
 
 	// Creating link using the `netlink` package
 	wglink := WireguardNetLink{
-		Id:     id,
+		Id:     task.Id,
 		Prefix: "reg",
 	}
 	err = netlink.LinkAdd(wglink)
 	if err != nil {
+		log.Error().Err(err).Msg("error while creating the interface")
 		return err
 	}
-
-	defer func() {
-		netlink.LinkDel(wglink)
-	}()
+	defer netlink.LinkDel(wglink)
 
 	// Configuring the device using our instance
-	err = r.WgClient.ConfigureDevice(int_name, device)
+	err = r.wgClient.ConfigureDevice(int_name, device)
 	if err != nil {
-		return err
-	}
-
-	// Set the server IP address on the tunnel
-	lnk, err := netlink.LinkByName(int_name)
-	if err != nil {
+		log.Error().Err(err).Msg("failed to apply the wireguard configuration")
 		return err
 	}
 
 	ipConfig := &netlink.Addr{IPNet: &net.IPNet{
-		IP:   net.IPv4(10, 255, byte(id), 1),
+		IP:   net.IPv4(10, 255, byte(task.Id), 1),
 		Mask: net.CIDRMask(24, 32),
 	}}
 
-	if err = netlink.AddrAdd(lnk, ipConfig); err != nil {
+	if err = netlink.AddrAdd(wglink, ipConfig); err != nil {
+		log.Error().Err(err).Msg("failed to add the ip configuration")
 		return err
 	}
-	if err = netlink.LinkSetUp(lnk); err != nil {
+	if err = netlink.LinkSetUp(wglink); err != nil {
+		log.Error().Err(err).Msg("failed to set the interface up")
 		return err
 	}
+
+	log.Debug().Msg("sending the connection information to the client")
 
 	publick := [wgtypes.KeyLen]byte(device.PrivateKey.PublicKey())
 	presharedk := [wgtypes.KeyLen]byte(presharedKey)
@@ -123,33 +122,36 @@ func (r OrionHolePunchingImplementations) Session(sessionInit *proto.HolePunchin
 				EndpointPort:  uint32(port),
 				PublicKey:     publick[:],
 				PresharedKey:  presharedk[:],
-				ClientAddress: fmt.Sprintf("10.255.%d.2", id),
-				RemoteAddress: fmt.Sprintf("10.255.%d.1", id),
+				ClientAddress: fmt.Sprintf("10.255.%d.2", task.Id),
+				RemoteAddress: fmt.Sprintf("10.255.%d.1", task.Id),
 			},
 		},
 	})
 
-	waitingCtx, ctxCancel := context.WithTimeout(sessionServer.Context(), time.Second*30)
+	waitingCtx, ctxCancel := context.WithTimeout(sessionServer.Context(), time.Second*15)
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
-			// Get the peer
-			dev, err := r.WgClient.Device(int_name)
+			log.Debug().Str("interface", int_name).Msg("ticking the interface")
+			dev, err := r.wgClient.Device(int_name)
 
 			if err != nil {
+				log.Error().Err(err).Msg("error while reading the interface information")
 				ctxCancel()
 				break
 			}
 			if len(dev.Peers) != 1 {
+				log.Error().Msg("more than one peer is connecte to the hole-punching instance")
 				ctxCancel()
 				break
 			}
 
 			peer := dev.Peers[0]
 			if peer.Endpoint != nil {
+				log.Info().Int("task-id", task.Id).IPAddr("address", peer.Endpoint.IP).Int("port", peer.Endpoint.Port).Msg("got a connection to the wireguard instance")
 				sessionServer.Send(&proto.HolePunchingEvent{
 					Event: &proto.HolePunchingEvent_Complete{
 						Complete: &proto.HolePunchingCompleteResponse{

@@ -1,16 +1,30 @@
 package main
 
 import (
-	"log"
+	"flag"
 	"net"
+	"os"
 
 	"github.com/MatthieuCoder/OrionV3/internal"
 	"github.com/MatthieuCoder/OrionV3/internal/proto"
-	"golang.zx2c4.com/wireguard/wgctrl"
 	"google.golang.org/grpc"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 func main() {
+	// Setup logging
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	debug := flag.Bool("debug", false, "sets log level to debug")
+	flag.Parse()
+
+	// Default level for this example is info, unless debug flag is present
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	if *debug {
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	}
 
 	// Get TLS credentials
 	cred := internal.NewServerTLS()
@@ -19,29 +33,26 @@ func main() {
 	lis, err := net.Listen("tcp", ":6443")
 
 	if err != nil {
-		log.Fatalf("Failed to start listener %v", err)
+		log.Fatal().Err(err).Msgf("Failed to start listener")
 	}
-
-	// Close the listener when containing function terminates
-	defer func() {
-		err = lis.Close()
-		if err != nil {
-			log.Printf("Failed to close listener %v", err)
-		}
-	}()
 
 	// Create a new gRPC server
 	s := grpc.NewServer(grpc.Creds(cred))
-	wg, err := wgctrl.New()
 
+	// Register the Registry service.
 	proto.RegisterRegistryServer(s, &internal.OrionRegistryImplementations{})
-	proto.RegisterHolePunchingServiceServer(s, &internal.OrionHolePunchingImplementations{
-		WgClient: wg,
-	})
+
+	// Create the hole-punching service
+	holepunch, err := internal.NewOrionHolePunchingImplementations()
+	if err != nil {
+		panic(err)
+	}
+	// Register the hole-punching service
+	proto.RegisterHolePunchingServiceServer(s, holepunch)
 
 	// Start the gRPC server
-	log.Printf("Server listening at %v", lis.Addr())
+	log.Info().Str("listening-address", lis.Addr().String()).Msgf("Server listening")
 	if err := s.Serve(lis); err != nil {
-		log.Fatalf("Failed to serve %v", err)
+		log.Fatal().Err(err).Msg("Failed to serve")
 	}
 }

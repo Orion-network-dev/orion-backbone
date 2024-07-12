@@ -7,3 +7,5 @@ import (
 type OrionRegistryImplementations struct {
 	proto.UnimplementedRegistryServer
 }
+
+// TODO: Implement p2p session creation through the registry.
