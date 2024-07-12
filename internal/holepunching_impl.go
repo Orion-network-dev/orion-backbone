@@ -2,7 +2,6 @@ package internal
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"math/rand"
 	"net"
@@ -22,7 +21,8 @@ type OrionHolePunchingImplementations struct {
 
 type WireguardNetLink struct {
 	netlink.Link
-	Id int
+	Id     int
+	Prefix string
 }
 
 func (r WireguardNetLink) Type() string {
@@ -31,18 +31,11 @@ func (r WireguardNetLink) Type() string {
 
 func (r WireguardNetLink) Attrs() *netlink.LinkAttrs {
 	return &netlink.LinkAttrs{
-		Name: fmt.Sprintf("reg%d", r.Id),
+		Name: fmt.Sprintf("%s%d", r.Prefix, r.Id),
 	}
 }
 
 func (r OrionHolePunchingImplementations) Session(sessionInit *proto.HolePunchingInitialize, sessionServer proto.HolePunchingService_SessionServer) error {
-
-	// Parsing the user-given public key for hole-punching
-	publicKey, err := base64.StdEncoding.DecodeString(sessionInit.PublicKey)
-	if err != nil {
-		return err
-	}
-
 	// Generate a new preshared key for this link
 	presharedKey, err := wgtypes.GenerateKey()
 	if err != nil {
@@ -57,7 +50,7 @@ func (r OrionHolePunchingImplementations) Session(sessionInit *proto.HolePunchin
 
 	// Add a new peer for the client.
 	device.Peers = append(device.Peers, wgtypes.PeerConfig{
-		PublicKey:    wgtypes.Key(publicKey),
+		PublicKey:    wgtypes.Key(sessionInit.PublicKey),
 		PresharedKey: &presharedKey,
 		AllowedIPs: []net.IPNet{
 			{
@@ -70,7 +63,7 @@ func (r OrionHolePunchingImplementations) Session(sessionInit *proto.HolePunchin
 	// Specify that we want to replace all the existing peers.
 	device.ReplacePeers = false
 	// Specifying a new port
-	port := 4200 + id
+	port := 42000 + id
 	device.ListenPort = &port
 
 	// Generating a new private key for our tunnel.
@@ -84,7 +77,8 @@ func (r OrionHolePunchingImplementations) Session(sessionInit *proto.HolePunchin
 
 	// Creating link using the `netlink` package
 	wglink := WireguardNetLink{
-		Id: id,
+		Id:     id,
+		Prefix: "reg",
 	}
 	err = netlink.LinkAdd(wglink)
 	if err != nil {
@@ -115,16 +109,22 @@ func (r OrionHolePunchingImplementations) Session(sessionInit *proto.HolePunchin
 	if err = netlink.AddrAdd(lnk, ipConfig); err != nil {
 		return err
 	}
+	if err = netlink.LinkSetUp(lnk); err != nil {
+		return err
+	}
 
+	publick := [wgtypes.KeyLen]byte(device.PrivateKey.PublicKey())
+	presharedk := [wgtypes.KeyLen]byte(presharedKey)
 	// Sending the connection informations to the client.
 	sessionServer.Send(&proto.HolePunchingEvent{
 		Event: &proto.HolePunchingEvent_InitializationResponse{
 			InitializationResponse: &proto.HolePunchingInitializationResponse{
-				Endpoint:         fmt.Sprintf("reg.orionet.re:%d", port),
-				PublicKey:        device.PrivateKey.String(),
-				PresharedKey:     presharedKey.String(),
-				ClientAddress:    fmt.Sprintf("10.255.%d.2/31", id),
-				AllowedAddresses: fmt.Sprintf("10.255.%d.1/32", id),
+				EndpointAddr:  "reg.orionet.re",
+				EndpointPort:  uint32(port),
+				PublicKey:     publick[:],
+				PresharedKey:  presharedk[:],
+				ClientAddress: fmt.Sprintf("10.255.%d.2", id),
+				RemoteAddress: fmt.Sprintf("10.255.%d.1", id),
 			},
 		},
 	})
@@ -153,17 +153,17 @@ func (r OrionHolePunchingImplementations) Session(sessionInit *proto.HolePunchin
 				sessionServer.Send(&proto.HolePunchingEvent{
 					Event: &proto.HolePunchingEvent_Complete{
 						Complete: &proto.HolePunchingCompleteResponse{
-							Endpoint: fmt.Sprintf("%s:%d", peer.Endpoint.IP, peer.Endpoint.Port),
+							ClientEndpoint: fmt.Sprintf("%s:%d", peer.Endpoint.IP, peer.Endpoint.Port),
 						},
 					},
 				})
+				ctxCancel()
 				return nil
 			}
 
 		case <-waitingCtx.Done():
+			ctxCancel()
 			return waitingCtx.Err()
 		}
 	}
-
-	return nil
 }

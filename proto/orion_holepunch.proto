@@ -4,21 +4,23 @@ option go_package=".;proto";
 
 // Message sent to initialize a hole-punching session for a given Wireguard Tunnel.
 message HolePunchingInitialize {
-    string public_key = 1;
+    bytes public_key = 1;
 }
 
 // Message send to inform the client of the Wireguard credentials and ip adresses
 message HolePunchingInitializationResponse {
     // The public endpoint and port of the registry server.
-    string endpoint = 1;
+    string endpoint_addr = 1;
+    uint32 endpoint_port = 2;
+
     // The public key of the registry server.
-    string public_key = 2;
+    bytes public_key = 3;
     // The preshared key assigned by the server for this session.
-    string preshared_key = 3;
+    bytes preshared_key = 4;
     // The address the client should use.
-    string client_address = 4;
+    string client_address = 5;
     // The allowed addresses that should be used.
-    string allowed_addresses = 5;
+    string remote_address = 6;
 }
 
 // Message send to inform that the information was gathered by the registry server
