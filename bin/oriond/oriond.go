@@ -2,17 +2,19 @@ package main
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/rand"
+	"crypto/sha512"
+	"crypto/x509"
 	"fmt"
-	"io"
 	"log"
-	"net"
+	"os"
 	"time"
+
+	"encoding/pem"
 
 	"github.com/MatthieuCoder/OrionV3/internal"
 	"github.com/MatthieuCoder/OrionV3/internal/proto"
-	"github.com/vishvananda/netlink"
-	"golang.zx2c4.com/wireguard/wgctrl"
-	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	"google.golang.org/grpc"
 )
 
@@ -27,96 +29,51 @@ func main() {
 	}
 
 	// Create the gRPC client
-	_ = proto.NewRegistryClient(conn)
-	holepunch := proto.NewHolePunchingServiceClient(conn)
+	registryClient := proto.NewRegistryClient(conn)
+	_ = proto.NewHolePunchingServiceClient(conn)
+	now := time.Now()
+	sec := now.Unix()
+	digest := fmt.Sprintf("%d:%s:%d", 0, "Genial!", sec)
+	hash := sha512.New().Sum([]byte(digest))
+	certPEM, err := os.ReadFile("ca/client.crt")
+	if err != nil {
+		panic(err)
+	}
 
-	privatek, err := wgtypes.GeneratePrivateKey()
+	privateKey, err := os.ReadFile("ca/client.key")
 	if err != nil {
 		panic(err)
 	}
-	publickey := privatek.PublicKey()
-	ctx := context.Background()
-	events, err := holepunch.Session(ctx, &proto.HolePunchingInitialize{
-		PublicKey: publickey[:],
-	})
+	zzz, _ := pem.Decode(privateKey)
+
+	pk, err := x509.ParseECPrivateKey(zzz.Bytes)
 	if err != nil {
 		panic(err)
 	}
-	wgclient, err := wgctrl.New()
+	signature, err := ecdsa.SignASN1(rand.Reader, pk, hash)
+	if err != nil {
+		panic(err)
+	}
+	data := &proto.InitializeRequest{
+		FriendlyName:    "0.orionet.re",
+		TimestampSigned: sec,
+		MemberId:        0,
+		Certificate:     certPEM,
+		Signed:          signature,
+	}
+
+	stream, err := registryClient.SubscribeToStream(context.Background(), data)
+
 	if err != nil {
 		panic(err)
 	}
 
 	for {
-		event, err := events.Recv()
-		if err == io.EOF {
-			return
-		}
+		new, err := stream.Recv()
 		if err != nil {
-			return
+			fmt.Println(err)
+			break
 		}
-		if event.GetComplete() != nil {
-			fmt.Println("Hole punching is complete!")
-			fmt.Println(event.GetComplete())
-		}
-		if event.GetInitializationResponse() != nil {
-			fmt.Println("Connecting to wg to hp;..")
-			// Needs to initialize a new wg tunnel
-			ir := event.GetInitializationResponse()
-			fmt.Println(ir)
-			// Create interface
-			wglink := internal.WireguardNetLink{
-				Id:     200,
-				Prefix: "clu",
-			}
-
-			err = netlink.LinkAdd(wglink)
-			if err != nil {
-				panic(err)
-			}
-
-			port := 40000 + 200
-			defer func() {
-				netlink.LinkDel(wglink)
-			}()
-			ip, err := net.LookupIP(ir.EndpointAddr)
-			if err != nil {
-				panic(err)
-			}
-			keepalive := time.Second * 5
-			preshared := wgtypes.Key(ir.PresharedKey)
-			thirtyonemask := net.CIDRMask(31, 32)
-			device := wgtypes.Config{
-				ListenPort: &port,
-				PrivateKey: &privatek,
-				Peers: []wgtypes.PeerConfig{
-					{
-						PublicKey: wgtypes.Key(ir.PublicKey),
-						Endpoint: &net.UDPAddr{
-							IP:   ip[0],
-							Port: int(ir.EndpointPort),
-						},
-						AllowedIPs: []net.IPNet{
-							{
-								IP:   net.ParseIP(ir.ClientAddress).Mask(thirtyonemask),
-								Mask: thirtyonemask,
-							},
-						},
-						PersistentKeepaliveInterval: &keepalive,
-						PresharedKey:                &preshared,
-					},
-				},
-			}
-
-			err = wgclient.ConfigureDevice("clu200", device)
-			if err != nil {
-				panic(err)
-			}
-			err = netlink.LinkSetUp(wglink)
-			if err != nil {
-				panic(err)
-			}
-
-		}
+		fmt.Println(new)
 	}
 }

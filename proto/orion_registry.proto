@@ -12,6 +12,10 @@ service Registry {
 // Data sent by a client to initialize an orion membership session
 message InitializeRequest {
   string friendly_name = 1;
+  int64 timestamp_signed = 2;
+  bytes signed = 3;
+  int64 member_id = 4;
+  bytes certificate = 5;
 }
 
 // Event sent to all clients when a new orion session is initialized.
@@ -37,6 +41,7 @@ message RPCEvent {
     ClientNewOnNetworkEvent client_new_on_network_event = 1;
     ClientWantsToInitiateLinkEvent client_wants_to_initiate_link_event = 2;
     ClientDisconnectedTeardownEvent client_disconnected_teardown_event = 3;
+
   }
 }
 
