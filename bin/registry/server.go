@@ -32,7 +32,8 @@ func main() {
 	// Create a new gRPC server
 	s := grpc.NewServer(grpc.Creds(cred))
 
-	proto.RegisterDemoServiceServer(s, &internal.OrionRegistryImpl{})
+	proto.RegisterRegistryServer(s, &internal.OrionRegistryImplementations{})
+	proto.RegisterHolePunchingServiceServer(s, &internal.OrionHolePunchingImplementations{})
 
 	// Start the gRPC server
 	log.Printf("Server listening at %v", lis.Addr())

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
 
@@ -20,16 +19,7 @@ func main() {
 		log.Fatalf("Unable to connect gRPC channel %v", err)
 	}
 
-	// Close the listener when containing function terminates
-	defer func() {
-		err = conn.Close()
-		if err != nil {
-			log.Printf("Unable to close gRPC channel %v", err)
-		}
-	}()
-
 	// Create the gRPC client
-	service := proto.NewDemoServiceClient(conn)
+	_ = proto.NewRegistryClient(conn)
 
-	service.SayHello(context.Background(), &proto.HelloRequest{})
 }

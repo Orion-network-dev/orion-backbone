@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+option go_package=".;proto";
+
+message InitializeRequest {
+  string FriendlyName = 1;
+}
+
+message ClientNewOnNetworkEvent {}
+message ClientWantsToInitiateP2PEvent {}
+message ClientDisconnectedTeardownEvent {}
+
+message RPCEvent {
+  oneof event {
+    ClientNewOnNetworkEvent client_new_on_network_event = 1;
+    ClientWantsToInitiateP2PEvent client_wants_to_initiate_p2_pEvent = 2;
+    ClientDisconnectedTeardownEvent client_disconnected_teardown_event = 3;
+  }
+}
+
+
+message InitializeConnectionToPeerRequest {}
+message InitializeConnectionToPeerResponse {}
+
+service Registry {
+  // Subscribe to the event stream
+  rpc SubscribeToStream(InitializeRequest) returns (stream RPCEvent);
+  // When an existing client wants to initiate a connection to a new or existing peer.
+  rpc InitializeConnectionToPeer(InitializeConnectionToPeerRequest) returns (InitializeConnectionToPeerResponse);
+}
+
