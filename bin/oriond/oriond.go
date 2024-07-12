@@ -33,7 +33,7 @@ func main() {
 	_ = proto.NewHolePunchingServiceClient(conn)
 	now := time.Now()
 	sec := now.Unix()
-	digest := fmt.Sprintf("%d:%s:%d", 0, "Genial!", sec)
+	digest := fmt.Sprintf("%d:%s:%d", 0, "0.orionet.re", sec)
 	hash := sha512.New().Sum([]byte(digest))
 	certPEM, err := os.ReadFile("ca/client.crt")
 	if err != nil {
