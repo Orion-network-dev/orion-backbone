@@ -2,13 +2,11 @@ package main
 
 import (
 	"context"
-	"crypto/ecdsa"
-	"crypto/rand"
-	"crypto/sha512"
 	"crypto/x509"
 	"encoding/pem"
 	"flag"
 	"fmt"
+	"net"
 	"os"
 	"time"
 
@@ -65,10 +63,18 @@ func main() {
 		panic(err)
 	}
 
+	tunnels := make([]*internal.WireguardInterface, 255)
+	defer func() {
+		for _, tunnel := range tunnels {
+			tunnel.Dispose()
+		}
+	}()
+
 	// Go routine used to login
 	go func() {
-		time := time.Now().Unix()
-		nonce := sha512.New().Sum([]byte(internal.CalculateNonce(int64(*memberId), *friendlyName, time)))
+		log.Debug().Msg("preparing to send the initialization message for authentication")
+
+		// Reading
 		certPEM, err := os.ReadFile(*internal.CertificatePath)
 		if err != nil {
 			log.Fatal().Err(err).Msgf("coundn't open the certificate pem file")
@@ -85,20 +91,9 @@ func main() {
 			log.Fatal().Err(err).Msgf("coundn't read the certificate key file")
 		}
 
-		signature, err := ecdsa.SignASN1(rand.Reader, pk, nonce)
-		if err != nil {
-			log.Fatal().Err(err).Msgf("couldn't sign the nonce data")
-		}
-
 		err = stream.Send(&proto.RPCClientEvent{
 			Event: &proto.RPCClientEvent_Initialize{
-				Initialize: &proto.InitializeRequest{
-					FriendlyName:    *friendlyName,
-					TimestampSigned: time,
-					MemberId:        int64(*memberId),
-					Certificate:     certPEM,
-					Signed:          signature,
-				},
+				Initialize: internal.CalculateNonce(int64(*memberId), *friendlyName, certPEM, pk),
 			},
 		})
 
@@ -112,6 +107,7 @@ func main() {
 		if err != nil {
 			log.Fatal().Err(err).Msg("failure while reading the gRPC stream")
 		}
+		minute := time.Minute
 
 		if new_client := data.GetNewClient(); new_client != nil {
 			log.Debug().Msg("got new client message, trying to initialize a p2p connection")
@@ -123,7 +119,7 @@ func main() {
 			publickey := privatekey.PublicKey()
 
 			tunnel, err := internal.NewWireguardInterface(wgClient, &netlink.LinkAttrs{
-				Name: fmt.Sprintf("peer%d", new_client.PeerId),
+				Name: fmt.Sprintf("orion%d", new_client.PeerId),
 			}, wgtypes.Config{
 				PrivateKey:   &privatekey,
 				ReplacePeers: true,
@@ -132,6 +128,7 @@ func main() {
 			if err != nil {
 				log.Fatal().Err(err).Msg("cannot make wireguard interface")
 			}
+			tunnels[new_client.PeerId] = tunnel
 
 			ctx := context.Background()
 			holepunch, err := internal.HolePunchTunnel(ctx, wgClient, tunnel, holepunchingClient)
@@ -165,17 +162,46 @@ func main() {
 			// todo: create interface
 			privatekey, err := wgtypes.GeneratePrivateKey()
 			if err != nil {
-				panic(err)
+				log.Fatal().Err(err).Msg("cannot make wireguard interface")
 			}
 			publickey := privatekey.PublicKey()
+			presharedKey, err := wgtypes.GenerateKey()
+			if err != nil {
+				log.Fatal().Err(err).Msg("cannot make wireguard interface")
+			}
+			tunnel, err := internal.NewWireguardInterface(wgClient, &netlink.LinkAttrs{
+				Name: fmt.Sprintf("orion%d", wants_to.SourcePeerId),
+			}, wgtypes.Config{
+				PrivateKey: &privatekey,
+			})
+			if err != nil {
+				log.Fatal().Err(err).Msg("cannot make wireguard interface")
+			}
+			tunnels[wants_to.SourcePeerId] = tunnel
+			result, err := internal.HolePunchTunnel(context.Background(), wgClient, tunnel, holepunchingClient)
+			if err != nil {
+				log.Fatal().Err(err).Msg("cannot holepunch interface")
+			}
+			tunnel.SetPeers(wgClient, []wgtypes.PeerConfig{
+				{
+					Endpoint: &net.UDPAddr{
+						IP:   net.ParseIP(wants_to.EndpointAddr),
+						Port: int(wants_to.EndpointPort),
+					},
+					PresharedKey:                &presharedKey,
+					PublicKey:                   wgtypes.Key(wants_to.PublicKey),
+					PersistentKeepaliveInterval: &minute,
+				},
+			})
 
 			response := &proto.ClientWantToConnectToClientResponse{
-				EndpointAddr:      "127.0.0.1",
-				EndpointPort:      5001,
+				EndpointAddr:      result.ClientEndpointAddr,
+				EndpointPort:      result.ClientEndpointPort,
 				PublicKey:         publickey[:],
 				FriendlyName:      *friendlyName,
 				SourcePeerId:      int64(*memberId),
 				DestinationPeerId: wants_to.SourcePeerId,
+				PresharedKey:      presharedKey[:],
 			}
 			fmt.Println(response)
 			stream.Send(&proto.RPCClientEvent{
@@ -183,14 +209,25 @@ func main() {
 					ConnectResponse: response,
 				},
 			})
-
-			fmt.Println("Client connection in progress.")
 			continue
 		}
-		fmt.Println(data)
 
 		if response := data.GetWantsToConnectResponse(); response != nil {
-			fmt.Println("Peer responded.")
+			// Now that the connection is done, we simply need to add the peer
+			wg := tunnels[response.SourcePeerId]
+			if wg != nil {
+				wg.SetPeers(wgClient, []wgtypes.PeerConfig{
+					{
+						Endpoint: &net.UDPAddr{
+							IP:   net.ParseIP(response.EndpointAddr),
+							Port: int(response.EndpointPort),
+						},
+						PresharedKey:                (*wgtypes.Key)(response.PresharedKey),
+						PublicKey:                   wgtypes.Key(response.PublicKey),
+						PersistentKeepaliveInterval: &minute,
+					},
+				})
+			}
 		}
 	}
 }

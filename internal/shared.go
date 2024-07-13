@@ -2,25 +2,45 @@ package internal
 
 import (
 	"crypto/ecdsa"
+	"crypto/rand"
 	"crypto/sha512"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 	"time"
 
+	"github.com/MatthieuCoder/OrionV3/internal/proto"
 	"github.com/rs/zerolog/log"
 )
 
-// Used to calculate the nonce that will later need to be signed
-// This contains all the data that absolutely needs to be verified
-// in order to have a succesful authentication process.
+// Calculate the nonce bytes
+func calculateNonceBytes(MemberId int64, FriendlyName string, time int64) []byte {
+	return sha512.New().Sum([]byte(fmt.Sprintf("%d:%s:%d", MemberId, FriendlyName, time)))
+}
+
+// Used to calculate the nonce and sign it
 func CalculateNonce(
 	MemberId int64,
 	FriendlyName string,
-	TimeStamp int64,
-) []byte {
-	authString := fmt.Sprintf("%d:%s:%d", MemberId, FriendlyName, TimeStamp)
-	return sha512.New().Sum([]byte(authString))
+	Certificate []byte,
+	PrivateKey *ecdsa.PrivateKey,
+) *proto.InitializeRequest {
+	time := time.Now().Unix()
+	authHash := calculateNonceBytes(MemberId, FriendlyName, time)
+
+	signed, err := ecdsa.SignASN1(rand.Reader, PrivateKey, authHash)
+
+	if err != nil {
+		log.Fatal().Err(err).Msgf("couldn't sign the nonce data")
+	}
+
+	return &proto.InitializeRequest{
+		FriendlyName:    FriendlyName,
+		TimestampSigned: time,
+		MemberId:        MemberId,
+		Certificate:     Certificate,
+		Signed:          signed,
+	}
 }
 
 // Parse a pem file and adds all the pem-encoded certificates to a cert-pool
@@ -93,7 +113,7 @@ func Authenticate(
 	}
 
 	// Calculate the hash given in order to check the client signature
-	nonce := CalculateNonce(MemberId, FriendlyName, TimeStamp)
+	nonce := calculateNonceBytes(MemberId, FriendlyName, TimeStamp)
 
 	// Verify that the user-provided data matches the signature created using the client root key
 	successful := ecdsa.VerifyASN1(cert.PublicKey.(*ecdsa.PublicKey), nonce, SignedNonce)
