@@ -124,11 +124,15 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibe_event proto.Reg
 		if connect := event.GetConnect(); connect != nil {
 			if dstClient := r.clientPool[connect.DestinationPeerId]; dstClient != nil {
 				dstClient.invitations <- connect
+			} else {
+				log.Error().Msgf("%d is not available", connect.DestinationPeerId)
 			}
 		}
 		if connect_response := event.GetConnectResponse(); connect_response != nil {
 			if dstClient := r.clientPool[connect_response.DestinationPeerId]; dstClient != nil {
 				dstClient.invitationsResponses <- connect_response
+			} else {
+				log.Error().Msgf("%d is not available", connect_response.DestinationPeerId)
 			}
 		}
 	}
