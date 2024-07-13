@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"net"
 	"os"
 
@@ -15,6 +16,7 @@ import (
 
 var (
 	debug = flag.Bool("debug", false, "change the log level to debug")
+	port  = flag.Int("port", 6443, "the port the server will listen on")
 )
 
 func main() {
@@ -29,14 +31,12 @@ func main() {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 
-	// Get TLS credentials
 	cred, err := internal.LoadTLS(true)
 	if err != nil {
-		log.Fatal().Err(err).Msgf("Failed to start listener")
+		log.Fatal().Err(err).Msgf("Failed to read the required certificates")
 	}
 
-	// Create a listener that listens to localhost port 8443
-	lis, err := net.Listen("tcp", ":6443")
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 
 	if err != nil {
 		log.Fatal().Err(err).Msgf("Failed to start listener")
@@ -45,15 +45,16 @@ func main() {
 	// Create a new gRPC server
 	s := grpc.NewServer(grpc.Creds(cred))
 
-	// Register the Registry service.
-	proto.RegisterRegistryServer(s, &internal.OrionRegistryImplementations{})
-
-	// Create the hole-punching service
-	holepunch, err := internal.NewOrionHolePunchingImplementations()
+	registry, err := internal.NewOrionRegistryImplementation()
 	if err != nil {
 		panic(err)
 	}
-	// Register the hole-punching service
+	holepunch, err := internal.NewOrionHolePunchingImplementation()
+	if err != nil {
+		panic(err)
+	}
+
+	proto.RegisterRegistryServer(s, registry)
 	proto.RegisterHolePunchingServiceServer(s, holepunch)
 
 	// Start the gRPC server

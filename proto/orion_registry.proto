@@ -4,9 +4,29 @@ option go_package=".;proto";
 
 service Registry {
   // Subscribe to the event stream
-  rpc SubscribeToStream(InitializeRequest) returns (stream RPCEvent);
-  // When an existing client wants to initiate a connection to a new or existing peer.
-  rpc InitializeConnectionToPeer(InitializeConnectionToPeerRequest) returns (InitializeConnectionToPeerResponse);
+  rpc SubscribeToStream(stream RPCClientEvent) returns (stream RPCServerEvent);
+}
+
+// Event sent to all clients when a new orion client joined the network
+message ClientNewOnNetworkEvent {
+  string friendly_name = 1;
+  int64 peer_id = 2;
+}
+
+// Sent when a clients lost connection and needs to be completely kicked from the network.
+message ClientDisconnectedTeardownEvent {
+  string friendly_name = 1;
+  int64 peer_id = 2;
+}
+
+
+message RPCServerEvent {
+  oneof event {
+    ClientNewOnNetworkEvent new_client = 1;
+    ClientDisconnectedTeardownEvent removed_client = 2;
+    ClientWantToConnectToClient wants_to_connect = 3;
+    ClientWantToConnectToClientResponse wants_to_connect_response = 4;
+  }
 }
 
 // Data sent by a client to initialize an orion membership session
@@ -18,41 +38,31 @@ message InitializeRequest {
   bytes certificate = 5;
 }
 
-// Event sent to all clients when a new orion session is initialized.
-message ClientNewOnNetworkEvent {
-  string friendly_name = 1;
-  int64 peer_id = 2;
+// Sent by the clients when wanting to initialize a new peer to peer request
+message ClientWantToConnectToClient {
+      string endpoint_addr = 1;
+      uint32 endpoint_port = 2;
+      bytes public_key = 3;
+      bytes preshared_key = 4;
+      string friendly_name = 5;
+      int64 peer_id = 6;
 }
 
-// Event sent to a client when another clients when a clients wants to initiate a peer-to-peer link.
-message ClientWantsToInitiateLinkEvent {
-  string friendly_name = 1;
-  int64 peer_id = 2;
+// Response to a ClientWantToConnectToClient
+message ClientWantToConnectToClientResponse {
+  string endpoint_addr = 1;
+  uint32 endpoint_port = 2;
+  bytes public_key = 3;
+  string friendly_name = 5;
+  int64 peer_id = 6;
 }
 
-// Sent when a clients lost connection and needs to be completely kicked from the network.
-message ClientDisconnectedTeardownEvent {
-  string friendly_name = 1;
-  int64 peer_id = 2;
-}
-
-message RPCEvent {
+message RPCClientEvent {
   oneof event {
-    ClientNewOnNetworkEvent client_new_on_network_event = 1;
-    ClientWantsToInitiateLinkEvent client_wants_to_initiate_link_event = 2;
-    ClientDisconnectedTeardownEvent client_disconnected_teardown_event = 3;
-
+      // First message sent to the server in order to initialize the stream status.
+      InitializeRequest initialize = 1;
+      // Sent when the clients wants to connect to a new client
+      ClientWantToConnectToClient connect = 2;
+      ClientWantToConnectToClientResponse connect_response = 3;
   }
 }
-
-// Send to a peer to indicate that another connection is possible to 
-// the specified.
-message InitializeConnectionToPeerRequest {
-  string member_id = 1;
-  string endpoint = 2;
-  string public_key = 3;
-  string preshared_key = 4;
-}
-
-// Response to a connection request.
-message InitializeConnectionToPeerResponse {}

@@ -23,9 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type RegistryClient interface {
 	// Subscribe to the event stream
-	SubscribeToStream(ctx context.Context, in *InitializeRequest, opts ...grpc.CallOption) (Registry_SubscribeToStreamClient, error)
-	// When an existing client wants to initiate a connection to a new or existing peer.
-	InitializeConnectionToPeer(ctx context.Context, in *InitializeConnectionToPeerRequest, opts ...grpc.CallOption) (*InitializeConnectionToPeerResponse, error)
+	SubscribeToStream(ctx context.Context, opts ...grpc.CallOption) (Registry_SubscribeToStreamClient, error)
 }
 
 type registryClient struct {
@@ -36,23 +34,18 @@ func NewRegistryClient(cc grpc.ClientConnInterface) RegistryClient {
 	return &registryClient{cc}
 }
 
-func (c *registryClient) SubscribeToStream(ctx context.Context, in *InitializeRequest, opts ...grpc.CallOption) (Registry_SubscribeToStreamClient, error) {
+func (c *registryClient) SubscribeToStream(ctx context.Context, opts ...grpc.CallOption) (Registry_SubscribeToStreamClient, error) {
 	stream, err := c.cc.NewStream(ctx, &Registry_ServiceDesc.Streams[0], "/Registry/SubscribeToStream", opts...)
 	if err != nil {
 		return nil, err
 	}
 	x := &registrySubscribeToStreamClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
 	return x, nil
 }
 
 type Registry_SubscribeToStreamClient interface {
-	Recv() (*RPCEvent, error)
+	Send(*RPCClientEvent) error
+	Recv() (*RPCServerEvent, error)
 	grpc.ClientStream
 }
 
@@ -60,21 +53,16 @@ type registrySubscribeToStreamClient struct {
 	grpc.ClientStream
 }
 
-func (x *registrySubscribeToStreamClient) Recv() (*RPCEvent, error) {
-	m := new(RPCEvent)
+func (x *registrySubscribeToStreamClient) Send(m *RPCClientEvent) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *registrySubscribeToStreamClient) Recv() (*RPCServerEvent, error) {
+	m := new(RPCServerEvent)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
-}
-
-func (c *registryClient) InitializeConnectionToPeer(ctx context.Context, in *InitializeConnectionToPeerRequest, opts ...grpc.CallOption) (*InitializeConnectionToPeerResponse, error) {
-	out := new(InitializeConnectionToPeerResponse)
-	err := c.cc.Invoke(ctx, "/Registry/InitializeConnectionToPeer", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 // RegistryServer is the server API for Registry service.
@@ -82,9 +70,7 @@ func (c *registryClient) InitializeConnectionToPeer(ctx context.Context, in *Ini
 // for forward compatibility
 type RegistryServer interface {
 	// Subscribe to the event stream
-	SubscribeToStream(*InitializeRequest, Registry_SubscribeToStreamServer) error
-	// When an existing client wants to initiate a connection to a new or existing peer.
-	InitializeConnectionToPeer(context.Context, *InitializeConnectionToPeerRequest) (*InitializeConnectionToPeerResponse, error)
+	SubscribeToStream(Registry_SubscribeToStreamServer) error
 	mustEmbedUnimplementedRegistryServer()
 }
 
@@ -92,11 +78,8 @@ type RegistryServer interface {
 type UnimplementedRegistryServer struct {
 }
 
-func (UnimplementedRegistryServer) SubscribeToStream(*InitializeRequest, Registry_SubscribeToStreamServer) error {
+func (UnimplementedRegistryServer) SubscribeToStream(Registry_SubscribeToStreamServer) error {
 	return status.Errorf(codes.Unimplemented, "method SubscribeToStream not implemented")
-}
-func (UnimplementedRegistryServer) InitializeConnectionToPeer(context.Context, *InitializeConnectionToPeerRequest) (*InitializeConnectionToPeerResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method InitializeConnectionToPeer not implemented")
 }
 func (UnimplementedRegistryServer) mustEmbedUnimplementedRegistryServer() {}
 
@@ -112,15 +95,12 @@ func RegisterRegistryServer(s grpc.ServiceRegistrar, srv RegistryServer) {
 }
 
 func _Registry_SubscribeToStream_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(InitializeRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(RegistryServer).SubscribeToStream(m, &registrySubscribeToStreamServer{stream})
+	return srv.(RegistryServer).SubscribeToStream(&registrySubscribeToStreamServer{stream})
 }
 
 type Registry_SubscribeToStreamServer interface {
-	Send(*RPCEvent) error
+	Send(*RPCServerEvent) error
+	Recv() (*RPCClientEvent, error)
 	grpc.ServerStream
 }
 
@@ -128,26 +108,16 @@ type registrySubscribeToStreamServer struct {
 	grpc.ServerStream
 }
 
-func (x *registrySubscribeToStreamServer) Send(m *RPCEvent) error {
+func (x *registrySubscribeToStreamServer) Send(m *RPCServerEvent) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func _Registry_InitializeConnectionToPeer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(InitializeConnectionToPeerRequest)
-	if err := dec(in); err != nil {
+func (x *registrySubscribeToStreamServer) Recv() (*RPCClientEvent, error) {
+	m := new(RPCClientEvent)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
-	if interceptor == nil {
-		return srv.(RegistryServer).InitializeConnectionToPeer(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/Registry/InitializeConnectionToPeer",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RegistryServer).InitializeConnectionToPeer(ctx, req.(*InitializeConnectionToPeerRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+	return m, nil
 }
 
 // Registry_ServiceDesc is the grpc.ServiceDesc for Registry service.
@@ -156,17 +126,13 @@ func _Registry_InitializeConnectionToPeer_Handler(srv interface{}, ctx context.C
 var Registry_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "Registry",
 	HandlerType: (*RegistryServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "InitializeConnectionToPeer",
-			Handler:    _Registry_InitializeConnectionToPeer_Handler,
-		},
-	},
+	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "SubscribeToStream",
 			Handler:       _Registry_SubscribeToStream_Handler,
 			ServerStreams: true,
+			ClientStreams: true,
 		},
 	},
 	Metadata: "proto/orion_registry.proto",

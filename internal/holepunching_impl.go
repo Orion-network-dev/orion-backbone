@@ -28,7 +28,7 @@ type OrionHolePunchingImplementation struct {
 	proto.UnimplementedHolePunchingServiceServer
 }
 
-func NewOrionHolePunchingImplementations() (*OrionHolePunchingImplementation, error) {
+func NewOrionHolePunchingImplementation() (*OrionHolePunchingImplementation, error) {
 	wg, err := wgctrl.New()
 	if err != nil {
 		log.Error().Err(err).Msg("failed to initialize the wireguard control system")
