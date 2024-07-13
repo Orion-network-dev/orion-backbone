@@ -54,8 +54,9 @@ message ClientWantToConnectToClientResponse {
   string endpoint_addr = 1;
   uint32 endpoint_port = 2;
   bytes public_key = 3;
-  string friendly_name = 5;
-  int64 peer_id = 6;
+  string friendly_name = 4;
+  int64 destination_peer_id = 5;
+  int64 source_peer_id = 6;
 }
 
 message RPCClientEvent {

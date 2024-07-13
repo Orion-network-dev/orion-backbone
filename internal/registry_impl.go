@@ -127,7 +127,7 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibe_event proto.Reg
 			}
 		}
 		if connect_response := event.GetConnectResponse(); connect_response != nil {
-			if dstClient := r.clientPool[connect_response.PeerId]; dstClient != nil {
+			if dstClient := r.clientPool[connect_response.DestinationPeerId]; dstClient != nil {
 				dstClient.invitationsResponses <- connect_response
 			}
 		}

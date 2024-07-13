@@ -127,7 +127,31 @@ func main() {
 		}
 
 		if wants_to := data.GetWantsToConnect(); wants_to != nil {
-			fmt.Println("")
+			// todo: create interface
+			privatekey, err := wgtypes.GeneratePrivateKey()
+			if err != nil {
+				panic(err)
+			}
+			publickey := privatekey.PublicKey()
+
+			stream.Send(&proto.RPCClientEvent{
+				Event: &proto.RPCClientEvent_ConnectResponse{
+					ConnectResponse: &proto.ClientWantToConnectToClientResponse{
+						EndpointAddr:      "127.0.0.1",
+						EndpointPort:      5001,
+						PublicKey:         publickey[:],
+						FriendlyName:      *friendlyName,
+						SourcePeerId:      int64(*memberId),
+						DestinationPeerId: wants_to.SourcePeerId,
+					},
+				},
+			})
+
+			fmt.Println("Client connection in progress.")
+		}
+
+		if response := data.GetWantsToConnectResponse(); response != nil {
+			fmt.Print(response)
 		}
 	}
 }
