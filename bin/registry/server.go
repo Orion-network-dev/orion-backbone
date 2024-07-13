@@ -36,7 +36,7 @@ func main() {
 		log.Fatal().Err(err).Msgf("Failed to read the required certificates")
 	}
 
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
 
 	if err != nil {
 		log.Fatal().Err(err).Msgf("Failed to start listener")
