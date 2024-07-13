@@ -24,7 +24,7 @@ var (
 	debug          = flag.Bool("debug", false, "change the log level to debug")
 	friendlyName   = flag.String("friendly-name", "", "the public friendly name the instance will have")
 	memberId       = flag.Int("member-id", 0, "the public friendly name the instance will have")
-	registryServer = flag.String("registry-server", "puffer.fish", "the address of the registry server")
+	registryServer = flag.String("registry-server", "reg.orionet.re", "the address of the registry server")
 	registryPort   = flag.Uint("registry-port", 6443, "the port used by the registry")
 )
 
@@ -161,29 +161,42 @@ func main() {
 		}
 
 		if wants_to := data.GetWantsToConnect(); wants_to != nil {
-			// todo: create interface
 			privatekey, err := wgtypes.GeneratePrivateKey()
 			if err != nil {
-				log.Fatal().Err(err).Msg("cannot make wireguard interface")
+				log.Error().Err(err).Msg("cannot make wireguard interface")
+				continue
 			}
 			publickey := privatekey.PublicKey()
+
 			presharedKey, err := wgtypes.GenerateKey()
 			if err != nil {
-				log.Fatal().Err(err).Msg("cannot make wireguard interface")
+				log.Error().Err(err).Msg("cannot make wireguard interface")
+				continue
 			}
+
 			tunnel, err := internal.NewWireguardInterface(wgClient, &netlink.LinkAttrs{
 				Name: fmt.Sprintf("orion%d", wants_to.SourcePeerId),
 			}, wgtypes.Config{
 				PrivateKey: &privatekey,
 			})
 			if err != nil {
-				log.Fatal().Err(err).Msg("cannot make wireguard interface")
+				log.Error().Err(err).Msg("cannot make wireguard interface")
+				continue
 			}
 			tunnels[wants_to.SourcePeerId] = tunnel
+
 			result, err := internal.HolePunchTunnel(context.Background(), wgClient, tunnel, holepunchingClient)
 			if err != nil {
-				log.Fatal().Err(err).Msg("cannot holepunch interface")
+				log.Error().Err(err).Msg("cannot holepunch interface")
+				continue
 			}
+
+			// Calculate the ip address
+			selfIP, err := internal.GetSelfAddress(*memberId, int(wants_to.SourcePeerId))
+			if err != nil {
+				panic(err)
+			}
+
 			tunnel.SetPeers(wgClient, []wgtypes.PeerConfig{
 				{
 					Endpoint: &net.UDPAddr{
@@ -193,8 +206,12 @@ func main() {
 					PresharedKey:                &presharedKey,
 					PublicKey:                   wgtypes.Key(wants_to.PublicKey),
 					PersistentKeepaliveInterval: &minute,
+					AllowedIPs: []net.IPNet{
+						*selfIP,
+					},
 				},
 			})
+			tunnel.SetAddress(selfIP)
 
 			response := &proto.ClientWantToConnectToClientResponse{
 				EndpointAddr:      result.ClientEndpointAddr,
@@ -205,7 +222,6 @@ func main() {
 				DestinationPeerId: wants_to.SourcePeerId,
 				PresharedKey:      presharedKey[:],
 			}
-			fmt.Println(response)
 			stream.Send(&proto.RPCClientEvent{
 				Event: &proto.RPCClientEvent_ConnectResponse{
 					ConnectResponse: response,
@@ -217,7 +233,14 @@ func main() {
 		if response := data.GetWantsToConnectResponse(); response != nil {
 			// Now that the connection is done, we simply need to add the peer
 			wg := tunnels[response.SourcePeerId]
+
 			if wg != nil {
+				// Calculate the ip address
+				selfIP, err := internal.GetSelfAddress(*memberId, int(response.SourcePeerId))
+				if err != nil {
+					panic(err)
+				}
+
 				wg.SetPeers(wgClient, []wgtypes.PeerConfig{
 					{
 						Endpoint: &net.UDPAddr{
@@ -227,8 +250,12 @@ func main() {
 						PresharedKey:                (*wgtypes.Key)(response.PresharedKey),
 						PublicKey:                   wgtypes.Key(response.PublicKey),
 						PersistentKeepaliveInterval: &minute,
+						AllowedIPs: []net.IPNet{
+							*selfIP,
+						},
 					},
 				})
+				wg.SetAddress(selfIP)
 			}
 		}
 	}

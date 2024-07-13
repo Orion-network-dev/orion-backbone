@@ -1,6 +1,8 @@
 package internal
 
 import (
+	"net"
+
 	"github.com/rs/zerolog/log"
 	"github.com/vishvananda/netlink"
 	"golang.zx2c4.com/wireguard/wgctrl"
@@ -55,5 +57,13 @@ func (c *WireguardInterface) SetPeers(wg *wgctrl.Client, peers []wgtypes.PeerCon
 func (c *WireguardInterface) Dispose() {
 	if err := netlink.LinkDel(c.wglink); err != nil {
 		log.Error().Err(err).Msg("failed to destroy interface")
+	}
+}
+
+func (c *WireguardInterface) SetAddress(ip *net.IPNet) {
+	if err := netlink.AddrAdd(c.wglink, &netlink.Addr{
+		IPNet: ip,
+	}); err != nil {
+		log.Error().Err(err).Msg("failed to assign IP addresses")
 	}
 }

@@ -15,6 +15,7 @@ require (
 	github.com/mdlayher/genetlink v1.3.2 // indirect
 	github.com/mdlayher/netlink v1.7.2 // indirect
 	github.com/mdlayher/socket v0.4.1 // indirect
+	github.com/praserx/ipconv v1.2.1
 	github.com/rs/zerolog v1.33.0 // indirect
 	github.com/teivah/broadcast v0.1.0 // indirect
 	github.com/vishvananda/netlink v1.1.0 // indirect
