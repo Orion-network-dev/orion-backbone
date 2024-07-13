@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"crypto/x509"
 	"fmt"
 	"os"
@@ -50,6 +51,7 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibe_event proto.Reg
 	if err != nil {
 		return err
 	}
+	ctx := subscibe_event.Context()
 
 	// In case of a initialization event
 	if initialize := event.GetInitialize(); initialize != nil {
@@ -89,6 +91,7 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibe_event proto.Reg
 	// We start a go routine to listen for global events
 	go func() {
 		newClients := r.newClients.Listener(100)
+		context_coroutine := context.WithoutCancel(ctx)
 		for {
 			select {
 			case newClient := <-newClients.Ch():
@@ -109,7 +112,7 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibe_event proto.Reg
 						WantsToConnectResponse: invitation_response,
 					},
 				})
-			case <-subscibe_event.Context().Done():
+			case <-context_coroutine.Done():
 				log.Debug().Err(err).Msg("client coroutine exited")
 				return
 			}
