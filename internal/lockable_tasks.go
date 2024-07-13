@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -28,20 +29,31 @@ func NewLockableTasks(tasksCount int) LockableTasks {
 	}
 }
 func (r *LockableTasks) AssignSessionId(ctx context.Context) (*Task, error) {
-	ticker := time.NewTicker(time.Microsecond)
+	ticker := time.NewTicker(time.Millisecond)
 	counter := 0
 	log.Debug().Msg("starting allocating a task number")
 	for {
 		select {
 		case <-ticker.C:
 			log.Debug().Int("try", counter).Int("task-id", counter%r.concurrentTaskCount).Msg("trying ID")
+
+			if counter > 5*r.concurrentTaskCount {
+				// We do not allow any more searching to avoid infinite loops
+				return nil, fmt.Errorf("task allocation timeout failed")
+			}
+
 			if r.tasksMap[counter%r.concurrentTaskCount] {
 				counter += 1
 				continue
 			} else {
-				r.editLock.Lock()
-				defer r.editLock.Unlock()
-				r.tasksMap[counter%r.concurrentTaskCount] = true
+
+				// Using a nested function to use `defer` sooner
+				func() {
+					r.editLock.Lock()
+					defer r.editLock.Unlock()
+
+					r.tasksMap[counter%r.concurrentTaskCount] = true
+				}()
 
 				task := Task{
 					tasksMap: r,
