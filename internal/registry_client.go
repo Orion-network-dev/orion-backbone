@@ -25,3 +25,11 @@ func (c *Client) Free(r *OrionRegistryImplementation) {
 
 	log.Debug().Int64("client-id", c.memberId).Msg("Dealloc client")
 }
+func NewClient(MemberId int64, FriendlyName string) *Client {
+	return &Client{
+		invitations:          make(chan *proto.ClientWantToConnectToClient),
+		invitationsResponses: make(chan *proto.ClientWantToConnectToClientResponse),
+		memberId:             MemberId,
+		friendlyName:         FriendlyName,
+	}
+}

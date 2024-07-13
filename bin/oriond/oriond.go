@@ -96,7 +96,7 @@ func main() {
 	for {
 		data, err := stream.Recv()
 		if err != nil {
-			continue
+			break
 		}
 
 		if new_client := data.GetNewClient(); new_client != nil {

@@ -74,11 +74,7 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibe_event proto.Reg
 			return err
 		}
 
-		client = &Client{
-			invitations:  make(chan *proto.ClientWantToConnectToClient),
-			memberId:     initialize.MemberId,
-			friendlyName: initialize.FriendlyName,
-		}
+		client = NewClient(initialize.MemberId, initialize.FriendlyName)
 		client.Allocate(r)
 		defer client.Free(r)
 
