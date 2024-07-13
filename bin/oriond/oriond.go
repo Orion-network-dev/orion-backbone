@@ -96,7 +96,7 @@ func main() {
 	for {
 		data, err := stream.Recv()
 		if err != nil {
-			break
+			continue
 		}
 
 		if new_client := data.GetNewClient(); new_client != nil {
@@ -125,7 +125,7 @@ func main() {
 				},
 			})
 
-			break
+			continue
 		}
 
 		if wants_to := data.GetWantsToConnect(); wants_to != nil {
@@ -152,7 +152,7 @@ func main() {
 			})
 
 			fmt.Println("Client connection in progress.")
-			break
+			continue
 		}
 		fmt.Println(data)
 

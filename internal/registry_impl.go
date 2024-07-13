@@ -107,6 +107,7 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibe_event proto.Reg
 					},
 				})
 			case invitation_response := <-client.invitationsResponses:
+				log.Debug().Int64("member-id", client.memberId).Msgf("dispatching message")
 				subscibe_event.Send(&proto.RPCServerEvent{
 					Event: &proto.RPCServerEvent_WantsToConnectResponse{
 						WantsToConnectResponse: invitation_response,
