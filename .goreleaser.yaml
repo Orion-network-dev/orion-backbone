@@ -27,7 +27,7 @@ builds:
       - linux
     main: ./bin/registry
     id: "registry"
-    binary: registry
+    binary: orion-registry
 archives:
   - format: tar.gz
     # this name template makes the OS and Arch compatible with the results of `uname`.
@@ -49,3 +49,52 @@ changelog:
     exclude:
       - "^docs:"
       - "^test:"
+
+nfpms:
+  - id: orionv3
+    package_name: orion_v3
+    file_name_template: "{{ .ConventionalFileName }}"
+    vendor: Matthieu Pignolet
+    homepage: https://mpgn.dev/
+    maintainer: Matthieu Pignolet <orion-release@mpgn.dev>
+    license: Apache 2.0
+    formats:
+      - apk
+      - deb
+      - rpm
+      - archlinux
+    umask: 0o002
+    dependencies:
+      - wireguard
+    bindir: /usr/bin
+
+    # Version Release.
+    release: 1
+
+    # Section.
+    section: default
+
+    # Priority.
+    priority: extra
+    meta: false
+
+    # Contents to add to the package.
+    # GoReleaser will automatically add the binaries.
+    contents: []
+
+    # Custom configuration applied only to the RPM packager.
+    rpm:
+      summary: OrionV3 is the backbone for the Orion Network
+
+    # Custom configuration applied only to the Deb packager.
+    deb:
+      fields:
+        Bugs: https://github.com/MatthieuCoder/OrionV3
+
+    apk:
+      signature:
+        key_name: origin
+
+    archlinux:
+      pkgbase: orion-registry
+      packager: Matthieu Pignolet <orion-release@mpgn.dev>
