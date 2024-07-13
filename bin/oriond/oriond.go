@@ -133,6 +133,7 @@ func main() {
 				panic(err)
 			}
 			publickey := privatekey.PublicKey()
+
 			response := &proto.ClientWantToConnectToClientResponse{
 				EndpointAddr:      "127.0.0.1",
 				EndpointPort:      5001,
@@ -152,6 +153,7 @@ func main() {
 		}
 
 		if response := data.GetWantsToConnectResponse(); response != nil {
+			fmt.Println("Peer responded.")
 			fmt.Print(response)
 		}
 	}
