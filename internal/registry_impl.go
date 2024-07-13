@@ -13,10 +13,11 @@ import (
 )
 
 type OrionRegistryImplementation struct {
-	newClients     *broadcast.Relay[*proto.ClientNewOnNetworkEvent]
-	rootCertPool   *x509.CertPool
-	clientPool     []*Client
-	clientPoolLock sync.Mutex
+	newClients      *broadcast.Relay[*proto.ClientNewOnNetworkEvent]
+	disposedClients *broadcast.Relay[*proto.ClientDisconnectedTeardownEvent]
+	rootCertPool    *x509.CertPool
+	clientPool      []*Client
+	clientPoolLock  sync.Mutex
 	proto.UnimplementedRegistryServer
 }
 
@@ -114,6 +115,18 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibe_event proto.Reg
 				return
 			}
 		}
+	}()
+
+	defer func() {
+		// On client disconnect
+		subscibe_event.Send(&proto.RPCServerEvent{
+			Event: &proto.RPCServerEvent_RemovedClient{
+				RemovedClient: &proto.ClientDisconnectedTeardownEvent{
+					PeerId:       client.memberId,
+					FriendlyName: client.friendlyName,
+				},
+			},
+		})
 	}()
 
 	// Once the user is authenticated
