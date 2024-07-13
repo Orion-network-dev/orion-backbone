@@ -37,9 +37,9 @@ func (r *LockableTasks) AssignSessionId(ctx context.Context) (*Task, error) {
 		case <-ticker.C:
 			log.Debug().Int("try", counter).Int("task-id", counter%r.concurrentTaskCount).Msg("trying ID")
 
-			if counter > 5*r.concurrentTaskCount {
+			if counter > 3*r.concurrentTaskCount {
 				// We do not allow any more searching to avoid infinite loops
-				return nil, fmt.Errorf("task allocation timeout failed")
+				return nil, fmt.Errorf("task allocation timeout reached")
 			}
 
 			if r.tasksMap[counter%r.concurrentTaskCount] {

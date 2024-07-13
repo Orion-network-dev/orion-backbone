@@ -1,79 +1,42 @@
 package main
 
 import (
-	"context"
-	"crypto/ecdsa"
-	"crypto/rand"
-	"crypto/sha512"
-	"crypto/x509"
+	"flag"
 	"fmt"
-	"log"
 	"os"
 	"time"
 
-	"encoding/pem"
-
 	"github.com/MatthieuCoder/OrionV3/internal"
-	"github.com/MatthieuCoder/OrionV3/internal/proto"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
 )
 
 func main() {
+	// Setup logging
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	debug := flag.Bool("debug", false, "sets log level to debug")
+	flag.Parse()
+
+	// Default level for this example is info, unless debug flag is present
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	if *debug {
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	}
 
 	// Get TLS credentials
-	cred := internal.NewClientTLS()
-
-	conn, err := grpc.NewClient(fmt.Sprintf("%s:%d", "reg.orionet.re", 6443), grpc.WithTransportCredentials(cred), grpc.WithIdleTimeout(time.Second*120))
+	cred, err := internal.LoadTLS(false)
 	if err != nil {
-		log.Fatalf("Unable to connect gRPC channel %v", err)
+		log.Fatal().Msgf("Unable to connect gRPC channel %v", err)
+	}
+
+	_, err = grpc.NewClient(fmt.Sprintf("%s:%d", "reg.orionet.re", 6443), grpc.WithTransportCredentials(cred), grpc.WithIdleTimeout(time.Second*120))
+	if err != nil {
+		log.Fatal().Msgf("Unable to connect gRPC channel %v", err)
 	}
 
 	// Create the gRPC client
-	registryClient := proto.NewRegistryClient(conn)
-	_ = proto.NewHolePunchingServiceClient(conn)
-	now := time.Now()
-	sec := now.Unix()
-	digest := fmt.Sprintf("%d:%s:%d", 0, "0.orionet.re", sec)
-	hash := sha512.New().Sum([]byte(digest))
-	certPEM, err := os.ReadFile("ca/client.crt")
-	if err != nil {
-		panic(err)
-	}
-
-	privateKey, err := os.ReadFile("ca/client.key")
-	if err != nil {
-		panic(err)
-	}
-	zzz, _ := pem.Decode(privateKey)
-
-	pk, err := x509.ParseECPrivateKey(zzz.Bytes)
-	if err != nil {
-		panic(err)
-	}
-	signature, err := ecdsa.SignASN1(rand.Reader, pk, hash)
-	if err != nil {
-		panic(err)
-	}
-	data := &proto.InitializeRequest{
-		FriendlyName:    "0.orionet.re",
-		TimestampSigned: sec,
-		MemberId:        0,
-		Certificate:     certPEM,
-		Signed:          signature,
-	}
-
-	stream, err := registryClient.SubscribeToStream(context.Background(), data)
-
-	if err != nil {
-		panic(err)
-	}
-
-	for {
-		new, err := stream.Recv()
-		if err != nil {
-			fmt.Println(err)
-			break
-		}
-		fmt.Println(new)
-	}
+	// registryClient := proto.NewRegistryClient(conn)
+	// holepunchingClient = proto.NewHolePunchingServiceClient(conn)
 }

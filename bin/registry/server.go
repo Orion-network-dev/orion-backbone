@@ -13,10 +13,13 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+var (
+	debug = flag.Bool("debug", false, "change the log level to debug")
+)
+
 func main() {
 	// Setup logging
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-	debug := flag.Bool("debug", false, "sets log level to debug")
 	flag.Parse()
 
 	// Default level for this example is info, unless debug flag is present
@@ -27,7 +30,10 @@ func main() {
 	}
 
 	// Get TLS credentials
-	cred := internal.NewServerTLS()
+	cred, err := internal.LoadTLS(true)
+	if err != nil {
+		log.Fatal().Err(err).Msgf("Failed to start listener")
+	}
 
 	// Create a listener that listens to localhost port 8443
 	lis, err := net.Listen("tcp", ":6443")

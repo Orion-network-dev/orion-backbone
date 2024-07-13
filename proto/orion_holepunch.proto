@@ -17,10 +17,6 @@ message HolePunchingInitializationResponse {
     bytes public_key = 3;
     // The preshared key assigned by the server for this session.
     bytes preshared_key = 4;
-    // The address the client should use.
-    string client_address = 5;
-    // The allowed addresses that should be used.
-    string remote_address = 6;
 }
 
 // Message send to inform that the information was gathered by the registry server
