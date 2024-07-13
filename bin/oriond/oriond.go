@@ -21,9 +21,11 @@ import (
 )
 
 var (
-	debug        = flag.Bool("debug", false, "change the log level to debug")
-	friendlyName = flag.String("friendly-name", "", "the public friendly name the instance will have")
-	memberId     = flag.Int("member-id", 0, "the public friendly name the instance will have")
+	debug          = flag.Bool("debug", false, "change the log level to debug")
+	friendlyName   = flag.String("friendly-name", "", "the public friendly name the instance will have")
+	memberId       = flag.Int("member-id", 0, "the public friendly name the instance will have")
+	registryServer = flag.String("registry-server", "puffer.fish", "the address of the registry server")
+	registryPort   = flag.Uint("registry-port", 6443, "the port used by the registry")
 )
 
 func main() {
@@ -49,7 +51,7 @@ func main() {
 		log.Fatal().Err(err).Msgf("Unable to connect gRPC channel")
 	}
 
-	conn, err := grpc.NewClient(fmt.Sprintf("%s:%d", "reg.orionet.re", 6443), grpc.WithTransportCredentials(cred), grpc.WithIdleTimeout(time.Second*120))
+	conn, err := grpc.NewClient(fmt.Sprintf("%s:%d", *registryServer, *registryPort), grpc.WithTransportCredentials(cred), grpc.WithIdleTimeout(time.Second*120))
 	if err != nil {
 		log.Fatal().Err(err).Msgf("Unable to connect gRPC channel")
 	}
