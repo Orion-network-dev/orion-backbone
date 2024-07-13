@@ -88,6 +88,7 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibe_event proto.Reg
 	// We start a go routine to listen for global events
 	go func() {
 		newClients := r.newClients.Listener(100)
+		disposedClients := r.disposedClients.Listener(100)
 		context_coroutine := context.WithoutCancel(ctx)
 		for {
 			select {
@@ -110,6 +111,15 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibe_event proto.Reg
 						WantsToConnectResponse: invitation_response,
 					},
 				})
+			case disposed := <-disposedClients.Ch():
+				log.Debug().Int64("disposed", disposed.PeerId).Int64("member-id", client.memberId).Msg("disposing")
+
+				subscibe_event.Send(&proto.RPCServerEvent{
+					Event: &proto.RPCServerEvent_RemovedClient{
+						RemovedClient: disposed,
+					},
+				})
+
 			case <-context_coroutine.Done():
 				log.Debug().Err(err).Msg("client coroutine exited")
 				return
@@ -119,13 +129,9 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibe_event proto.Reg
 
 	defer func() {
 		// On client disconnect
-		subscibe_event.Send(&proto.RPCServerEvent{
-			Event: &proto.RPCServerEvent_RemovedClient{
-				RemovedClient: &proto.ClientDisconnectedTeardownEvent{
-					PeerId:       client.memberId,
-					FriendlyName: client.friendlyName,
-				},
-			},
+		r.disposedClients.Broadcast(&proto.ClientDisconnectedTeardownEvent{
+			PeerId:       client.memberId,
+			FriendlyName: client.friendlyName,
 		})
 	}()
 

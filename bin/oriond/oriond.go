@@ -158,7 +158,6 @@ func main() {
 
 		if response := data.GetWantsToConnectResponse(); response != nil {
 			fmt.Println("Peer responded.")
-			fmt.Print(response)
 		}
 	}
 }
