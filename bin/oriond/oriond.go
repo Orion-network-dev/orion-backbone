@@ -151,6 +151,7 @@ func main() {
 
 			fmt.Println("Client connection in progress.")
 		}
+		fmt.Println(data)
 
 		if response := data.GetWantsToConnectResponse(); response != nil {
 			fmt.Println("Peer responded.")
