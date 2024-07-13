@@ -84,6 +84,10 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibe_event proto.Reg
 			FriendlyName: initialize.FriendlyName,
 			PeerId:       initialize.MemberId,
 		})
+	} else {
+		err := fmt.Errorf("the first message wasn't a initialize session message")
+		log.Debug().Err(err).Msg("wrong first message")
+		return err
 	}
 
 	// We start a go routine to listen for global events

@@ -76,34 +76,20 @@ func (r *OrionHolePunchingImplementation) Session(sessionInit *proto.HolePunchin
 	device.PrivateKey = &key
 
 	// Create a new wireguard interface
-	int_name := fmt.Sprintf("%s%d", *holePunchingInterfacePrefix, task.Id)
-	log.Info().Str("interface-name", int_name).Msg("creating interface")
+	interfaceName := fmt.Sprintf("%s%d", *holePunchingInterfacePrefix, task.Id)
+	log.Info().Str("interface-name", interfaceName).Msg("creating interface")
 
-	wglink := WireguardNetLink{
-		InterfaceAttrs: &netlink.LinkAttrs{
-			Name: int_name,
+	wgInt, err := NewWireguardInterface(
+		r.wgClient,
+		&netlink.LinkAttrs{
+			Name: interfaceName,
 		},
-	}
-
-	// Create a new wireguard interface
-	if err = netlink.LinkAdd(wglink); err != nil {
-		log.Error().Err(err).Msg("error while creating the interface")
+		device,
+	)
+	if err != nil {
 		return err
 	}
-	// Don't forget to delete the interface at the end of this session
-	defer netlink.LinkDel(wglink)
-
-	// Configure the wireguard instance
-	if err = r.wgClient.ConfigureDevice(int_name, device); err != nil {
-		log.Error().Err(err).Msg("failed to apply the wireguard configuration")
-		return err
-	}
-
-	// Start the interface
-	if err = netlink.LinkSetUp(wglink); err != nil {
-		log.Error().Err(err).Msg("failed to set the interface up")
-		return err
-	}
+	defer wgInt.Dispose()
 
 	log.Debug().Msg("sending the connection information to the client")
 
@@ -134,8 +120,8 @@ func (r *OrionHolePunchingImplementation) Session(sessionInit *proto.HolePunchin
 		select {
 		case <-ticker.C:
 			// We verify if an handshake was made
-			log.Debug().Str("interface", int_name).Msg("checking the wireguard interface for handshakes")
-			dev, err := r.wgClient.Device(int_name)
+			log.Debug().Str("interface", interfaceName).Msg("checking the wireguard interface for handshakes")
+			dev, err := r.wgClient.Device(interfaceName)
 			if err != nil {
 				log.Error().Err(err).Msg("error while reading the interface information")
 				return err
@@ -155,7 +141,8 @@ func (r *OrionHolePunchingImplementation) Session(sessionInit *proto.HolePunchin
 				sessionServer.Send(&proto.HolePunchingEvent{
 					Event: &proto.HolePunchingEvent_Complete{
 						Complete: &proto.HolePunchingCompleteResponse{
-							ClientEndpoint: fmt.Sprintf("%s:%d", peer.Endpoint.IP, peer.Endpoint.Port),
+							ClientEndpointAddr: peer.Endpoint.IP.String(),
+							ClientEndpointPort: uint32(peer.Endpoint.Port),
 						},
 					},
 				})

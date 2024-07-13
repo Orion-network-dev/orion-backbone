@@ -43,7 +43,6 @@ message ClientWantToConnectToClient {
       string endpoint_addr = 1;
       uint32 endpoint_port = 2;
       bytes public_key = 3;
-      bytes preshared_key = 4;
       string friendly_name = 5;
       int64 destination_peer_id = 6;
       int64 source_peer_id = 7;
@@ -56,6 +55,7 @@ message ClientWantToConnectToClientResponse {
   bytes public_key = 3;
   string friendly_name = 4;
   int64 destination_peer_id = 5;
+  bytes preshared_key = 7;
   int64 source_peer_id = 6;
 }
 

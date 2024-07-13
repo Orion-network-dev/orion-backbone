@@ -16,6 +16,8 @@ import (
 	"github.com/MatthieuCoder/OrionV3/internal/proto"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"github.com/vishvananda/netlink"
+	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	"google.golang.org/grpc"
 )
@@ -38,20 +40,25 @@ func main() {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 
+	wgClient, err := wgctrl.New()
+	if err != nil {
+		log.Fatal().Err(err).Msgf("Unable to connect to wireguard")
+	}
+
 	// Get TLS credentials
 	cred, err := internal.LoadTLS(false)
 	if err != nil {
-		log.Fatal().Msgf("Unable to connect gRPC channel %v", err)
+		log.Fatal().Err(err).Msgf("Unable to connect gRPC channel")
 	}
 
 	conn, err := grpc.NewClient(fmt.Sprintf("%s:%d", "reg.orionet.re", 6443), grpc.WithTransportCredentials(cred), grpc.WithIdleTimeout(time.Second*120))
 	if err != nil {
-		log.Fatal().Msgf("Unable to connect gRPC channel %v", err)
+		log.Fatal().Err(err).Msgf("Unable to connect gRPC channel")
 	}
 
 	// Create the gRPC client
 	registryClient := proto.NewRegistryClient(conn)
-	// holepunchingClient = proto.NewHolePunchingServiceClient(conn)
+	holepunchingClient := proto.NewHolePunchingServiceClient(conn)
 
 	stream, err := registryClient.SubscribeToStream(context.Background())
 	if err != nil {
@@ -64,23 +71,26 @@ func main() {
 		nonce := sha512.New().Sum([]byte(internal.CalculateNonce(int64(*memberId), *friendlyName, time)))
 		certPEM, err := os.ReadFile(*internal.CertificatePath)
 		if err != nil {
-			panic(err)
+			log.Fatal().Err(err).Msgf("coundn't open the certificate pem file")
 		}
+
 		privateKey, err := os.ReadFile(*internal.KeyPath)
 		if err != nil {
-			panic(err)
+			log.Fatal().Err(err).Msgf("coundn't open the certificate key file")
 		}
-		zzz, _ := pem.Decode(privateKey)
+		rawCertificate, _ := pem.Decode(privateKey)
+		pk, err := x509.ParseECPrivateKey(rawCertificate.Bytes)
 
-		pk, err := x509.ParseECPrivateKey(zzz.Bytes)
 		if err != nil {
-			panic(err)
+			log.Fatal().Err(err).Msgf("coundn't read the certificate key file")
 		}
+
 		signature, err := ecdsa.SignASN1(rand.Reader, pk, nonce)
 		if err != nil {
-			panic(err)
+			log.Fatal().Err(err).Msgf("couldn't sign the nonce data")
 		}
-		stream.Send(&proto.RPCClientEvent{
+
+		err = stream.Send(&proto.RPCClientEvent{
 			Event: &proto.RPCClientEvent_Initialize{
 				Initialize: &proto.InitializeRequest{
 					FriendlyName:    *friendlyName,
@@ -91,39 +101,62 @@ func main() {
 				},
 			},
 		})
+
+		if err != nil {
+			log.Fatal().Err(err).Msgf("couldn't swrite the initialization message to the gRPC connection")
+		}
 	}()
 
 	for {
 		data, err := stream.Recv()
 		if err != nil {
-			break
+			log.Fatal().Err(err).Msg("failure while reading the gRPC stream")
 		}
 
 		if new_client := data.GetNewClient(); new_client != nil {
+			log.Debug().Msg("got new client message, trying to initialize a p2p connection")
+
 			privatekey, err := wgtypes.GeneratePrivateKey()
 			if err != nil {
-				panic(err)
+				log.Fatal().Err(err).Msg("failure to generate a wireguard private key")
 			}
 			publickey := privatekey.PublicKey()
-			presharedkey, err := wgtypes.GenerateKey()
+
+			tunnel, err := internal.NewWireguardInterface(wgClient, &netlink.LinkAttrs{
+				Name: fmt.Sprintf("peer%d", new_client.PeerId),
+			}, wgtypes.Config{
+				PrivateKey:   &privatekey,
+				ReplacePeers: true,
+				Peers:        []wgtypes.PeerConfig{},
+			})
 			if err != nil {
-				panic(err)
+				log.Fatal().Err(err).Msg("cannot make wireguard interface")
+			}
+
+			ctx := context.Background()
+			holepunch, err := internal.HolePunchTunnel(ctx, wgClient, tunnel, holepunchingClient)
+			if err != nil {
+				log.Error().Err(err).Msg("cannot hole punch interface")
+				tunnel.Dispose()
+				continue
 			}
 
 			// Ask a new connection by emitting a client event
-			stream.Send(&proto.RPCClientEvent{
+			err = stream.Send(&proto.RPCClientEvent{
 				Event: &proto.RPCClientEvent_Connect{
 					Connect: &proto.ClientWantToConnectToClient{
-						EndpointAddr:      "127.0.0.1",
-						EndpointPort:      5001,
+						EndpointAddr:      holepunch.ClientEndpointAddr,
+						EndpointPort:      holepunch.ClientEndpointPort,
 						PublicKey:         publickey[:],
-						PresharedKey:      presharedkey[:],
 						FriendlyName:      *friendlyName,
 						DestinationPeerId: new_client.PeerId,
 						SourcePeerId:      int64(*memberId),
 					},
 				},
 			})
+			if err != nil {
+				log.Fatal().Err(err).Msgf("couldn't swrite the initialization message to the gRPC connection")
+			}
 
 			continue
 		}
