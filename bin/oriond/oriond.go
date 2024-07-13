@@ -124,6 +124,8 @@ func main() {
 					},
 				},
 			})
+
+			break
 		}
 
 		if wants_to := data.GetWantsToConnect(); wants_to != nil {
@@ -150,6 +152,7 @@ func main() {
 			})
 
 			fmt.Println("Client connection in progress.")
+			break
 		}
 		fmt.Println(data)
 

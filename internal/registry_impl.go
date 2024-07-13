@@ -110,6 +110,7 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibe_event proto.Reg
 					},
 				})
 			case <-subscibe_event.Context().Done():
+				log.Debug().Err(err).Msg("client coroutine exited")
 				return
 			}
 		}
@@ -119,8 +120,10 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibe_event proto.Reg
 	for {
 		event, err := subscibe_event.Recv()
 		if err != nil {
+			log.Debug().Err(err).Msg("subscribe_event exited")
 			return err
 		}
+
 		if connect := event.GetConnect(); connect != nil {
 			log.Debug().Int64("source", client.memberId).Int64("destination", connect.DestinationPeerId).Msgf("Connect Init")
 			if dstClient := r.clientPool[connect.DestinationPeerId]; dstClient != nil {
