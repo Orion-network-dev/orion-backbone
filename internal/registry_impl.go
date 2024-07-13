@@ -38,10 +38,11 @@ func NewOrionRegistryImplementation() (*OrionRegistryImplementation, error) {
 	}
 
 	return &OrionRegistryImplementation{
-		newClients:     broadcast.NewRelay[*proto.ClientNewOnNetworkEvent](),
-		clientPoolLock: sync.Mutex{},
-		clientPool:     make([]*Client, 255),
-		rootCertPool:   root,
+		newClients:      broadcast.NewRelay[*proto.ClientNewOnNetworkEvent](),
+		disposedClients: broadcast.NewRelay[*proto.ClientDisconnectedTeardownEvent](),
+		clientPoolLock:  sync.Mutex{},
+		clientPool:      make([]*Client, 255),
+		rootCertPool:    root,
 	}, nil
 }
 func (r *OrionRegistryImplementation) SubscribeToStream(subscibe_event proto.Registry_SubscribeToStreamServer) error {
