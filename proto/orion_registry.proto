@@ -45,7 +45,8 @@ message ClientWantToConnectToClient {
       bytes public_key = 3;
       bytes preshared_key = 4;
       string friendly_name = 5;
-      int64 peer_id = 6;
+      int64 destination_peer_id = 6;
+      int64 source_peer_id = 7;
 }
 
 // Response to a ClientWantToConnectToClient
