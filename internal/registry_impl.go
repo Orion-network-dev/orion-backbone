@@ -88,7 +88,7 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibe_event proto.Reg
 
 	// We start a go routine to listen for global events
 	go func() {
-		newClients := r.newClients.Listener(1)
+		newClients := r.newClients.Listener(100)
 		for {
 			select {
 			case newClient := <-newClients.Ch():

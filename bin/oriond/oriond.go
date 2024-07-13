@@ -133,17 +133,18 @@ func main() {
 				panic(err)
 			}
 			publickey := privatekey.PublicKey()
-
+			response := &proto.ClientWantToConnectToClientResponse{
+				EndpointAddr:      "127.0.0.1",
+				EndpointPort:      5001,
+				PublicKey:         publickey[:],
+				FriendlyName:      *friendlyName,
+				SourcePeerId:      int64(*memberId),
+				DestinationPeerId: wants_to.SourcePeerId,
+			}
+			fmt.Println(response)
 			stream.Send(&proto.RPCClientEvent{
 				Event: &proto.RPCClientEvent_ConnectResponse{
-					ConnectResponse: &proto.ClientWantToConnectToClientResponse{
-						EndpointAddr:      "127.0.0.1",
-						EndpointPort:      5001,
-						PublicKey:         publickey[:],
-						FriendlyName:      *friendlyName,
-						SourcePeerId:      int64(*memberId),
-						DestinationPeerId: wants_to.SourcePeerId,
-					},
+					ConnectResponse: response,
 				},
 			})
 
