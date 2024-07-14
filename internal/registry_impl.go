@@ -75,11 +75,11 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibe_event proto.Reg
 			return err
 		}
 
-		log.Info().Int64("member-id", client.memberId).Msg("client authenticated")
-
 		client = NewClient(initialize.MemberId, initialize.FriendlyName)
 		client.Allocate(r)
 		defer client.Dispose(r)
+
+		log.Info().Int64("member-id", client.memberId).Msg("client authenticated")
 
 		r.newClients.Broadcast(&proto.ClientNewOnNetworkEvent{
 			FriendlyName: initialize.FriendlyName,
