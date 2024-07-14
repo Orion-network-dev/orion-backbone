@@ -11,7 +11,6 @@ if ! command -v jq &> /dev/null
 then
     echo "Ths jq command couldn't be found in your current $PATH... Trying to install it."
     apt-get install -yq jq &> /dev/null
-    exit 1
 fi
 
 # Check for the `curl` command to be available.
@@ -19,7 +18,6 @@ if ! command -v curl &> /dev/null
 then
     echo "Ths curl command couldn't be found in your current $PATH... Trying to install it."
     apt-get install -yq curl &> /dev/null
-    exit 1
 fi
 
 JSON=$(curl -s https://api.github.com/repos/MatthieuCoder/OrionV3/releases/latest)
