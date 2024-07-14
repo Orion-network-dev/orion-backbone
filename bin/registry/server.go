@@ -47,11 +47,11 @@ func main() {
 
 	registry, err := internal.NewOrionRegistryImplementation()
 	if err != nil {
-		panic(err)
+		log.Fatal().Err(err).Msgf("Failed to create the registry")
 	}
 	holepunch, err := internal.NewOrionHolePunchingImplementation()
 	if err != nil {
-		panic(err)
+		log.Fatal().Err(err).Msgf("Failed to create the holepunching service")
 	}
 
 	proto.RegisterRegistryServer(s, registry)
