@@ -121,7 +121,8 @@ func main() {
 			publickey := privatekey.PublicKey()
 
 			tunnel, err := internal.NewWireguardInterface(wgClient, &netlink.LinkAttrs{
-				Name: fmt.Sprintf("orion%d", new_client.PeerId),
+				Name:  fmt.Sprintf("orion%d", new_client.PeerId),
+				Group: 30,
 			}, wgtypes.Config{
 				PrivateKey:   &privatekey,
 				ReplacePeers: true,
@@ -175,7 +176,8 @@ func main() {
 			}
 
 			tunnel, err := internal.NewWireguardInterface(wgClient, &netlink.LinkAttrs{
-				Name: fmt.Sprintf("orion%d", wants_to.SourcePeerId),
+				Name:  fmt.Sprintf("orion%d", wants_to.SourcePeerId),
+				Group: 30,
 			}, wgtypes.Config{
 				PrivateKey: &privatekey,
 			})

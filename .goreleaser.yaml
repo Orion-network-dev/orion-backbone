@@ -14,6 +14,7 @@ before:
     - go mod tidy
 
 builds:
+  # Build for the `oriond` daemon
   - env:
       - CGO_ENABLED=0
     goos:
@@ -21,6 +22,7 @@ builds:
     main: ./bin/oriond
     id: "oriond"
     binary: oriond
+  # Build for the `orion-registry` daemon
   - env:
       - CGO_ENABLED=0
     goos:
@@ -29,7 +31,8 @@ builds:
     id: "registry"
     binary: orion-registry
 archives:
-  - format: tar.gz
+  - format: binary
+    id: orion
     # this name template makes the OS and Arch compatible with the results of `uname`.
     name_template: >-
       {{ .ProjectName }}_
@@ -38,21 +41,10 @@ archives:
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}
       {{- if .Arm }}v{{ .Arm }}{{ end }}
-    # use zip for windows archives
-    format_overrides:
-      - goos: windows
-        format: zip
-
-changelog:
-  sort: asc
-  filters:
-    exclude:
-      - "^docs:"
-      - "^test:"
 
 nfpms:
-  - id: orionv3
-    package_name: orion_v3
+  - id: orion
+    package_name: orion
     file_name_template: "{{ .ConventionalFileName }}"
     vendor: Matthieu Pignolet
     homepage: https://mpgn.dev/
