@@ -260,5 +260,13 @@ func main() {
 				wg.SetAddress(selfIP)
 			}
 		}
+
+		if disconnect := data.GetRemovedClient(); disconnect != nil {
+			wg := tunnels[disconnect.PeerId]
+
+			if wg != nil {
+				wg.Dispose()
+			}
+		}
 	}
 }

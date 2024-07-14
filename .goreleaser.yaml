@@ -72,7 +72,25 @@ nfpms:
 
     # Contents to add to the package.
     # GoReleaser will automatically add the binaries.
-    contents: []
+    contents:
+      # Service files
+      - src: packaging/orion-registry.service
+        dst: /etc/systemd/system/orion-registry.service
+        type: "config|noreplace"
+      - src: packaging/oriond.service
+        dst: /etc/systemd/system/oriond.service
+        type: "config|noreplace"
+      # Default files
+      - src: packaging/oriond
+        dst: /etc/default/oriond
+        type: "config|noreplace"
+      - src: packaging/orion-registry
+        dst: /etc/default/orion-registry
+        type: "config|noreplace"
+      # Root CA
+      - src: packaging/ca.crt
+        dst: /etc/oriond/
+        type: "config|noreplace"
 
     # Custom configuration applied only to the RPM packager.
     rpm:

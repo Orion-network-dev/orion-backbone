@@ -15,9 +15,16 @@ type WireguardInterface struct {
 }
 
 func NewWireguardInterface(wg *wgctrl.Client, interfaceAttrs *netlink.LinkAttrs, configuration wgtypes.Config) (*WireguardInterface, error) {
-
+	log.Debug().Str("interface", interfaceAttrs.Name).Msg("configuring interface")
 	wglink := WireguardNetLink{
 		InterfaceAttrs: interfaceAttrs,
+	}
+
+	if link, err := netlink.LinkByName(wglink.InterfaceAttrs.Name); err == nil {
+		log.Debug().Str("interface", interfaceAttrs.Name).Msg("interface already exist, deleting")
+		if err := netlink.LinkDel(link); err != nil {
+			log.Error().Msg("failed to delete the already existing interface")
+		}
 	}
 
 	if err := netlink.LinkAdd(wglink); err != nil {
@@ -36,13 +43,14 @@ func NewWireguardInterface(wg *wgctrl.Client, interfaceAttrs *netlink.LinkAttrs,
 		netlink.LinkDel(wglink)
 		return nil, err
 	}
-
+	log.Debug().Str("interface", interfaceAttrs.Name).Msg("finished setting up interface")
 	return &WireguardInterface{
 		wglink: wglink,
 	}, nil
 }
 
 func (c *WireguardInterface) SetPeers(wg *wgctrl.Client, peers []wgtypes.PeerConfig) error {
+	log.Debug().Str("interface", c.wglink.InterfaceAttrs.Name).Msg("updating peers on interface")
 	c.wgconfig.Peers = peers
 	c.wgconfig.ReplacePeers = true
 
@@ -55,12 +63,14 @@ func (c *WireguardInterface) SetPeers(wg *wgctrl.Client, peers []wgtypes.PeerCon
 }
 
 func (c *WireguardInterface) Dispose() {
+	log.Debug().Str("interface", c.wglink.InterfaceAttrs.Name).Msg("disposing wireguard interface")
 	if err := netlink.LinkDel(c.wglink); err != nil {
 		log.Error().Err(err).Msg("failed to destroy interface")
 	}
 }
 
 func (c *WireguardInterface) SetAddress(ip *net.IPNet) {
+	log.Debug().Str("interface", c.wglink.InterfaceAttrs.Name).Msg("updating the IP address")
 	if err := netlink.AddrAdd(c.wglink, &netlink.Addr{
 		IPNet: ip,
 	}); err != nil {

@@ -18,13 +18,20 @@ func (c *Client) Allocate(r *OrionRegistryImplementation) {
 	r.clientPool[c.memberId] = c
 	log.Debug().Int64("client-id", c.memberId).Msg("Alloc client")
 }
-func (c *Client) Free(r *OrionRegistryImplementation) {
+
+func (c *Client) Dispose(r *OrionRegistryImplementation) {
 	r.clientPoolLock.Lock()
 	defer r.clientPoolLock.Unlock()
 	r.clientPool[c.memberId] = nil
 
+	r.disposedClients.Broadcast(&proto.ClientDisconnectedTeardownEvent{
+		PeerId:       c.memberId,
+		FriendlyName: c.friendlyName,
+	})
+
 	log.Debug().Int64("client-id", c.memberId).Msg("Dealloc client")
 }
+
 func NewClient(MemberId int64, FriendlyName string) *Client {
 	return &Client{
 		invitations:          make(chan *proto.ClientWantToConnectToClient),

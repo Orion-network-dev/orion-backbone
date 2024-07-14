@@ -1,0 +1,19 @@
+[Unit]
+Description=Orion Registry
+After=network-online.target
+ 
+[Service]
+Type=simple
+ 
+User=root
+Group=root
+UMask=007
+
+EnvironmentFile=/etc/default/orion-registry
+ExecStart=/usr/bin/orion-registry $TERM
+
+Restart=on-failure
+TimeoutStopSec=300
+ 
+[Install]
+WantedBy=multi-user.target
