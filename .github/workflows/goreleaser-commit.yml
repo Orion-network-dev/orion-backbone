@@ -1,4 +1,4 @@
-name: goreleaser
+name: goreleaser-commit
 
 on:
   pull_request:
