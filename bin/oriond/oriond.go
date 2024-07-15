@@ -25,7 +25,7 @@ var (
 	friendlyName   = flag.String("friendly-name", "", "the public friendly name the instance will have")
 	memberId       = flag.Int("member-id", 0, "the public friendly name the instance will have")
 	registryServer = flag.String("registry-server", "reg.orionet.re", "the address of the registry server")
-	registryPort   = flag.Uint("registry-port", 6443, "the port used by the registry")
+	registryPort   = flag.Uint("registry-port", 443, "the port used by the registry")
 )
 
 func main() {
