@@ -15,8 +15,8 @@ import (
 )
 
 var (
-	debug = flag.Bool("debug", false, "change the log level to debug")
-	port  = flag.Int("port", 6443, "the port the server will listen on")
+	debug         = flag.Bool("debug", false, "change the log level to debug")
+	listeningHost = flag.String("listen-host", "127.0.0.1:6443", "the port the server will listen on")
 )
 
 func main() {
@@ -36,7 +36,7 @@ func main() {
 		log.Fatal().Err(err).Msgf("Failed to read the required certificates")
 	}
 
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", *listeningHost))
 
 	if err != nil {
 		log.Fatal().Err(err).Msgf("Failed to start listener")
