@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"net"
 	"time"
@@ -12,8 +13,20 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
+var (
+	holePunchOverridePort    = flag.Int("hole-punch-override-port", 0, "Override the public port for this instance")
+	holePunchOverrideAddress = flag.String("hole-punch-override-address", "", "Override the public port for this instance")
+)
+
 func HolePunchTunnel(parentCtx context.Context, wgCtl *wgctrl.Client, wg *WireguardInterface, holepunchClient proto.HolePunchingServiceClient) (*proto.HolePunchingCompleteResponse, error) {
 	ctx := context.WithoutCancel(parentCtx)
+
+	if *holePunchOverrideAddress != "" && *holePunchOverridePort != 0 {
+		return &proto.HolePunchingCompleteResponse{
+			ClientEndpointAddr: *holePunchOverrideAddress,
+			ClientEndpointPort: uint32(*holePunchOverridePort),
+		}, nil
+	}
 
 	device, err := wgCtl.Device(wg.wglink.InterfaceAttrs.Name)
 	if err != nil {
