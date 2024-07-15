@@ -105,16 +105,12 @@ func Authenticate(
 	if _, err := cert.Verify(x509.VerifyOptions{
 		Roots:         RootCertPool,
 		Intermediates: intermediates,
+		DNSName:       identifier,
 		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 	}); err != nil {
 		log.Debug().Err(err).Msg("certificate is not valid for wanted domains")
 		return fmt.Errorf(err.Error())
 	}
-	if cert.Subject.CommonName != identifier {
-		log.Debug().Err(err).Msg("certificate is not valid for wanted domains")
-		return fmt.Errorf("DNS name invalid")
-	}
-
 	// Calculate the hash given in order to check the client signature
 	nonce := calculateNonceBytes(MemberId, FriendlyName, TimeStamp)
 

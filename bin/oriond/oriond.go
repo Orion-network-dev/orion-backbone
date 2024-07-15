@@ -199,7 +199,7 @@ func main() {
 			}
 
 			// Calculate the ip address
-			selfIP, err := internal.GetSelfAddress(*memberId, int(wants_to.SourcePeerId))
+			selfIP, err := internal.GetSelfAddress(uint32(*memberId), uint32(wants_to.SourcePeerId))
 			if err != nil {
 				panic(err)
 			}
@@ -243,7 +243,7 @@ func main() {
 
 			if wg != nil {
 				// Calculate the ip address
-				selfIP, err := internal.GetSelfAddress(*memberId, int(response.SourcePeerId))
+				selfIP, err := internal.GetSelfAddress(uint32(*memberId), uint32(response.SourcePeerId))
 				if err != nil {
 					panic(err)
 				}
