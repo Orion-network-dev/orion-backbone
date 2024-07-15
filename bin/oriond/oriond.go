@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"crypto/x509"
 	"encoding/pem"
 	"flag"
@@ -87,15 +88,19 @@ func main() {
 			log.Fatal().Err(err).Msgf("coundn't open the certificate key file")
 		}
 		rawCertificate, _ := pem.Decode(privateKey)
-		pk, err := x509.ParseECPrivateKey(rawCertificate.Bytes)
+		pk, err := x509.ParsePKCS8PrivateKey(rawCertificate.Bytes)
 
 		if err != nil {
+			log.Fatal().Err(err).Msgf("coundn't read the certificate key file")
+		}
+		ecDSApk := pk.(*ecdsa.PrivateKey)
+		if pk == nil {
 			log.Fatal().Err(err).Msgf("coundn't read the certificate key file")
 		}
 
 		err = stream.Send(&proto.RPCClientEvent{
 			Event: &proto.RPCClientEvent_Initialize{
-				Initialize: internal.CalculateNonce(int64(*memberId), *friendlyName, certPEM, pk),
+				Initialize: internal.CalculateNonce(int64(*memberId), *friendlyName, certPEM, ecDSApk),
 			},
 		})
 
