@@ -30,7 +30,7 @@ var (
 )
 
 func loadTmpl() *template.Template {
-	tmpl, err := template.New("").ParseFiles(*tmplPath)
+	tmpl, err := template.New(*tmplPath).ParseFiles(*tmplPath)
 	if err != nil {
 		panic(err)
 	}
