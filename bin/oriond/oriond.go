@@ -114,7 +114,7 @@ func main() {
 		if err != nil {
 			log.Fatal().Err(err).Msg("failure while reading the gRPC stream")
 		}
-		minute := time.Minute
+		minute := time.Second * 10
 
 		if new_client := data.GetNewClient(); new_client != nil {
 			log.Debug().Msg("got new client message, trying to initialize a p2p connection")
