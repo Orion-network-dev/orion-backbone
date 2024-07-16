@@ -58,6 +58,7 @@ nfpms:
     umask: 0o002
     dependencies:
       - wireguard
+      - frr
     bindir: /usr/bin
 
     # Version Release.
