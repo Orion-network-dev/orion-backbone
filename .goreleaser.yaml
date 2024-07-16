@@ -87,6 +87,9 @@ nfpms:
       - src: packaging/orion-registry
         dst: /etc/default/orion-registry
         type: "config|noreplace"
+      - src: packaging/frr.conf.tmpl
+        dst: /etc/oriond/frr.conf.tmpl
+        type: "config|noreplace"
       # Root CA
       - src: packaging/ca.crt
         dst: /etc/oriond/

@@ -18,17 +18,20 @@ var (
 	baseIp = net.IPv4(172, 30, 0, 0)
 )
 
-func GetSelfAddress(self uint32, other uint32) (*net.IPNet, error) {
+func GetSelfAddress(self uint32, other uint32) (*net.IPNet, *net.IPNet, error) {
 	peer := szudzikPairing(self, other)
 
 	ipInt, err := ipconv.IPv4ToInt(baseIp)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	selfIPAddress := ipInt + uint32(peer<<1)
+	otherIPAddress := ipInt + uint32(peer<<1)
 
 	if self > other {
 		selfIPAddress = selfIPAddress + 1
+	} else {
+		otherIPAddress = otherIPAddress + 1
 	}
 
 	mask := net.CIDRMask(31, 32)
@@ -36,6 +39,10 @@ func GetSelfAddress(self uint32, other uint32) (*net.IPNet, error) {
 		IP:   ipconv.IntToIPv4(selfIPAddress),
 		Mask: mask,
 	}
+	otherIPNet := net.IPNet{
+		IP:   ipconv.IntToIPv4(otherIPAddress),
+		Mask: mask,
+	}
 
-	return &selfIPNet, nil
+	return &selfIPNet, &otherIPNet, nil
 }

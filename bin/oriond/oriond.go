@@ -24,9 +24,16 @@ import (
 var (
 	debug          = flag.Bool("debug", false, "change the log level to debug")
 	friendlyName   = flag.String("friendly-name", "", "the public friendly name the instance will have")
-	memberId       = flag.Int("member-id", 0, "the public friendly name the instance will have")
+	memberId       = flag.Int64("member-id", 0, "the public friendly name the instance will have")
 	registryServer = flag.String("registry-server", "reg.orionet.re", "the address of the registry server")
 	registryPort   = flag.Uint("registry-port", 443, "the port used by the registry")
+)
+
+var (
+	allIPRanges = net.IPNet{
+		IP:   net.IPv4(0, 0, 0, 0),
+		Mask: net.CIDRMask(0, 32),
+	}
 )
 
 func main() {
@@ -62,6 +69,13 @@ func main() {
 	holepunchingClient := proto.NewHolePunchingServiceClient(conn)
 
 	stream, err := registryClient.SubscribeToStream(context.Background())
+	if err != nil {
+		panic(err)
+	}
+	frrManager, err := internal.NewFrrConfigManager(
+		64511+*memberId,
+		*memberId,
+	)
 	if err != nil {
 		panic(err)
 	}
@@ -114,7 +128,7 @@ func main() {
 		if err != nil {
 			log.Fatal().Err(err).Msg("failure while reading the gRPC stream")
 		}
-		minute := time.Second * 4
+		minute := time.Minute
 
 		if new_client := data.GetNewClient(); new_client != nil {
 			log.Debug().Msg("got new client message, trying to initialize a p2p connection")
@@ -199,7 +213,7 @@ func main() {
 			}
 
 			// Calculate the ip address
-			selfIP, err := internal.GetSelfAddress(uint32(*memberId), uint32(wants_to.SourcePeerId))
+			selfIP, otherIP, err := internal.GetSelfAddress(uint32(*memberId), uint32(wants_to.SourcePeerId))
 			if err != nil {
 				panic(err)
 			}
@@ -214,11 +228,15 @@ func main() {
 					PublicKey:                   wgtypes.Key(wants_to.PublicKey),
 					PersistentKeepaliveInterval: &minute,
 					AllowedIPs: []net.IPNet{
-						*selfIP,
+						allIPRanges,
 					},
 				},
 			})
 			tunnel.SetAddress(selfIP)
+			frrManager.Peers = append(frrManager.Peers, internal.Peer{
+				ASN:     wants_to.SourcePeerId + 64512,
+				Address: otherIP.IP.String(),
+			})
 
 			response := &proto.ClientWantToConnectToClientResponse{
 				EndpointAddr:      result.ClientEndpointAddr,
@@ -234,6 +252,10 @@ func main() {
 					ConnectResponse: response,
 				},
 			})
+			err = frrManager.Update()
+			if err != nil {
+				panic(err)
+			}
 			continue
 		}
 
@@ -243,7 +265,7 @@ func main() {
 
 			if wg != nil {
 				// Calculate the ip address
-				selfIP, err := internal.GetSelfAddress(uint32(*memberId), uint32(response.SourcePeerId))
+				selfIP, otherIP, err := internal.GetSelfAddress(uint32(*memberId), uint32(response.SourcePeerId))
 				if err != nil {
 					panic(err)
 				}
@@ -258,12 +280,22 @@ func main() {
 						PublicKey:                   wgtypes.Key(response.PublicKey),
 						PersistentKeepaliveInterval: &minute,
 						AllowedIPs: []net.IPNet{
-							*selfIP,
+							allIPRanges,
 						},
 					},
 				})
 				wg.SetAddress(selfIP)
+
+				frrManager.Peers = append(frrManager.Peers, internal.Peer{
+					ASN:     response.SourcePeerId + 64512,
+					Address: otherIP.IP.String(),
+				})
+				err = frrManager.Update()
+				if err != nil {
+					panic(err)
+				}
 			}
+
 		}
 
 		if disconnect := data.GetRemovedClient(); disconnect != nil {
