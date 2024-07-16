@@ -67,15 +67,13 @@ func (c *FrrConfigManager) Update() error {
 	context.ASN = c.ASN
 	context.OrionId = c.OrionId
 	context.Peers = c.Peers
-	groups := make([]group, len(c.Peers))
+	groups := make([]group, 0)
 
 	// Might be useful when applying policies, once we give the control to the user
 	for _, peer := range context.Peers {
-		if peer.ASN != 0 {
-			groups = append(groups, group{
-				ASN: peer.ASN,
-			})
-		}
+		groups = append(groups, group{
+			ASN: peer.ASN,
+		})
 	}
 	context.Groups = groups
 
