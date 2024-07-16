@@ -92,7 +92,7 @@ func (c *FrrConfigManager) Update() error {
 	}
 
 	// Apply the configuration patch
-	execReload := exec.Command("/usr/lib/frr/frr-reload.py", "-reload", abs)
+	execReload := exec.Command("/usr/lib/frr/frr-reload.py", "--reload", abs)
 	execReload.Stdout = os.Stdout
 	execReload.Stderr = os.Stderr
 	if err := execReload.Run(); err != nil {
