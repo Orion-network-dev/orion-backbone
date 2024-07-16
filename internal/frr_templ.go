@@ -67,14 +67,15 @@ func (c *FrrConfigManager) Update() error {
 	context.ASN = c.ASN
 	context.OrionId = c.OrionId
 	context.Peers = c.Peers
-	groups := make(map[int64]group, len(c.Peers))
+	groups := make([]group, len(c.Peers))
 
-	// Might be useful when applying policies, when we give the control to the user
+	// Might be useful when applying policies, once we give the control to the user
 	for _, peer := range context.Peers {
-		groups[peer.ASN] = group{
+		groups = append(groups, group{
 			ASN: peer.ASN,
-		}
+		})
 	}
+	context.Groups = groups
 
 	tempConfig, err := os.CreateTemp("/tmp", "orion-conf-update*.conf")
 	if err != nil {

@@ -6,7 +6,7 @@ router bgp {{ .ASN }}
  no bgp ebgp-requires-policy
  no bgp network import-check
  bgp router-id 192.168.255.{{ .OrionId }}
-{{- range .Groups }}
+{{ range .Groups }}
  neighbor orion{{ .ASN }} peer-group
  neighbor orion{{ .ASN }} remote-as {{ .ASN }}
 {{- end -}}
