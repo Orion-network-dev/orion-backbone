@@ -234,7 +234,7 @@ func main() {
 			})
 			tunnel.SetAddress(selfIP)
 			frrManager.Peers = append(frrManager.Peers, internal.Peer{
-				ASN:     wants_to.SourcePeerId + 64512,
+				ASN:     wants_to.SourcePeerId + 64511,
 				Address: otherIP.IP.String(),
 			})
 
@@ -287,7 +287,7 @@ func main() {
 				wg.SetAddress(selfIP)
 
 				frrManager.Peers = append(frrManager.Peers, internal.Peer{
-					ASN:     response.SourcePeerId + 64512,
+					ASN:     response.SourcePeerId + 64511,
 					Address: otherIP.IP.String(),
 				})
 				err = frrManager.Update()
