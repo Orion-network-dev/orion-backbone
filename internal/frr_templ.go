@@ -71,9 +71,11 @@ func (c *FrrConfigManager) Update() error {
 
 	// Might be useful when applying policies, once we give the control to the user
 	for _, peer := range context.Peers {
-		groups = append(groups, group{
-			ASN: peer.ASN,
-		})
+		if peer.ASN != 0 {
+			groups = append(groups, group{
+				ASN: peer.ASN,
+			})
+		}
 	}
 	context.Groups = groups
 
