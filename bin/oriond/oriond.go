@@ -13,6 +13,9 @@ import (
 
 	"github.com/MatthieuCoder/OrionV3/internal"
 	"github.com/MatthieuCoder/OrionV3/internal/proto"
+	"github.com/getsentry/sentry-go"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_sentry "github.com/johnbellone/grpc-middleware-sentry"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/vishvananda/netlink"
@@ -40,6 +43,16 @@ func main() {
 	// Setup logging
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	flag.Parse()
+	err := sentry.Init(sentry.ClientOptions{
+		Dsn: "https://1219038a36ab4c20de64b5c7dc9a9ee5@o228322.ingest.us.sentry.io/4507616497893376",
+		// Set TracesSampleRate to 1.0 to capture 100%
+		// of transactions for performance monitoring.
+		// We recommend adjusting this value in production,
+		TracesSampleRate: 1.0,
+	})
+	if err != nil {
+		log.Fatal().Msgf("sentry.Init: %s", err)
+	}
 
 	// Default level for this example is info, unless debug flag is present
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
@@ -59,7 +72,21 @@ func main() {
 		log.Fatal().Err(err).Msgf("Unable to connect gRPC channel")
 	}
 
-	conn, err := grpc.NewClient(fmt.Sprintf("%s:%d", *registryServer, *registryPort), grpc.WithTransportCredentials(cred), grpc.WithIdleTimeout(time.Second*120))
+	conn, err := grpc.NewClient(fmt.Sprintf("%s:%d", *registryServer, *registryPort),
+		grpc.WithTransportCredentials(cred),
+		grpc.WithIdleTimeout(time.Second*120),
+		grpc.WithStreamInterceptor(
+			grpc_middleware.ChainStreamClient(
+				grpc_sentry.StreamClientInterceptor(),
+			),
+		),
+		grpc.WithUnaryInterceptor(
+			grpc_middleware.ChainUnaryClient(
+				grpc_sentry.UnaryClientInterceptor(),
+			),
+		),
+	)
+
 	if err != nil {
 		log.Fatal().Err(err).Msgf("Unable to connect gRPC channel")
 	}

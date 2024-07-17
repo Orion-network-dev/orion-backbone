@@ -7,10 +7,12 @@ import (
 
 	"github.com/MatthieuCoder/OrionV3/internal"
 	"github.com/MatthieuCoder/OrionV3/internal/proto"
-	"google.golang.org/grpc"
-
+	"github.com/getsentry/sentry-go"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_sentry "github.com/johnbellone/grpc-middleware-sentry"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	"google.golang.org/grpc"
 )
 
 var (
@@ -22,6 +24,17 @@ func main() {
 	// Setup logging
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	flag.Parse()
+
+	err := sentry.Init(sentry.ClientOptions{
+		Dsn: "https://5c2733c29efd992fbcbd9d01b3b0ab8e@o228322.ingest.us.sentry.io/4507616547569664",
+		// Set TracesSampleRate to 1.0 to capture 100%
+		// of transactions for performance monitoring.
+		// We recommend adjusting this value in production,
+		TracesSampleRate: 1.0,
+	})
+	if err != nil {
+		log.Fatal().Msgf("sentry.Init: %s", err)
+	}
 
 	// Default level for this example is info, unless debug flag is present
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
@@ -42,7 +55,13 @@ func main() {
 	}
 
 	// Create a new gRPC server
-	s := grpc.NewServer(grpc.Creds(cred))
+	s := grpc.NewServer(grpc.Creds(cred),
+		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
+			grpc_sentry.StreamServerInterceptor(),
+		)),
+		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
+			grpc_sentry.UnaryServerInterceptor(),
+		)))
 
 	registry, err := internal.NewOrionRegistryImplementation()
 	if err != nil {
