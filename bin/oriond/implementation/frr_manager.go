@@ -80,7 +80,10 @@ func (c *FrrConfigManager) Update() error {
 	log.Debug().Msg("updating the FRR configuration")
 	peers := make([]Peer, len(c.Peers))
 	for _, value := range c.Peers {
-		peers = append(peers, *value)
+		if value.ASN != 0 {
+
+			peers = append(peers, *value)
+		}
 	}
 
 	// We initialize some basic information regarding the BGP sessions
