@@ -31,12 +31,12 @@ func LoadTLS(clientCerts bool) (credentials.TransportCredentials, error) {
 
 	clientCert, err := tls.LoadX509KeyPair(*CertificatePath, *KeyPath)
 	if err != nil {
-		return nil, handleError(err, "failed to load client certificate")
+		return nil, HandleError(err, "failed to load client certificate")
 	}
 
 	authorityPool, err := loadAuthorityPool()
 	if err != nil {
-		return nil, handleError(err, "failed to load the authority pool")
+		return nil, HandleError(err, "failed to load the authority pool")
 	}
 
 	tlsConfig := createTLSConfig(clientCert, authorityPool, clientCerts)
@@ -65,12 +65,12 @@ func createTLSConfig(clientCert tls.Certificate, authorityPool *x509.CertPool, c
 func loadAuthorityPool() (*x509.CertPool, error) {
 	trustedCert, err := os.ReadFile(*AuthorityPath)
 	if err != nil {
-		return nil, handleError(err, "failed to read CA certificate")
+		return nil, HandleError(err, "failed to read CA certificate")
 	}
 
 	certPool := x509.NewCertPool()
 	if !certPool.AppendCertsFromPEM(trustedCert) {
-		return nil, handleError(fmt.Errorf("the CA certificate couldn't be constructed"), "failed to append CA certificate to pool")
+		return nil, HandleError(fmt.Errorf("the CA certificate couldn't be constructed"), "failed to append CA certificate to pool")
 	}
 
 	return certPool, nil

@@ -23,84 +23,80 @@ var (
 	}
 )
 
+// OrionClientDaemon represents the Orion client daemon with necessary components and state.
 type OrionClientDaemon struct {
 	// Metadata regarding the client
 	memberId     uint32
-	friendlyName string
 	asn          uint32
+	friendlyName string
+
+	// Runtime information
+	ctx context.Context
 
 	// Structs used to manage the state of OrionD
-	frrManager       *FrrConfigManager
 	wireguardTunnels map[uint32]*internal.WireguardInterface
+	frrManager       *FrrConfigManager
 	wgClient         *wgctrl.Client
 
 	// GRPC Clients
 	registryClient     proto.RegistryClient
 	holePunchingClient proto.HolePunchingServiceClient
 	registryStream     proto.Registry_SubscribeToStreamClient
-
-	// Runtime information
-	ctx context.Context
 }
 
-// Creates and initializes a new Orion client
-func NewOrionClientDaemon(
-	Context context.Context,
-	ClientConnection *grpc.ClientConn,
-) (*OrionClientDaemon, error) {
-	orionClient := OrionClientDaemon{
-		registryClient:     proto.NewRegistryClient(ClientConnection),
-		holePunchingClient: proto.NewHolePunchingServiceClient(ClientConnection),
+// NewOrionClientDaemon creates and initializes a new Orion client.
+func NewOrionClientDaemon(ctx context.Context, clientConnection *grpc.ClientConn) (*OrionClientDaemon, error) {
+	orionClient := &OrionClientDaemon{
+		registryClient:     proto.NewRegistryClient(clientConnection),
+		holePunchingClient: proto.NewHolePunchingServiceClient(clientConnection),
 		friendlyName:       *friendlyName,
 		wireguardTunnels:   make(map[uint32]*internal.WireguardInterface),
-		ctx:                Context,
+		ctx:                ctx,
 	}
 
-	wgClient, err := wgctrl.New()
-	if err != nil {
-		return nil, err
-	}
-	orionClient.wgClient = wgClient
+	var err error
 
-	// Resolve our current identity using the data from the certificates,
-	// taking the overrides into acocunt
+	if orionClient.wgClient, err = wgctrl.New(); err != nil {
+		return nil, internal.HandleError(err, "failed to create WireGuard client")
+	}
+
 	if err := orionClient.resolveIdentity(); err != nil {
-		return nil, err
+		return nil, internal.HandleError(err, "failed to resolve identity")
 	}
 
-	// Initializing the FRR config manager, which is used to change the bgp configuration
-	if frrManager, err := NewFrrConfigManager(orionClient.asn, orionClient.memberId); err == nil {
-		orionClient.frrManager = frrManager
-	} else {
-		return nil, err
+	if orionClient.frrManager, err = NewFrrConfigManager(orionClient.asn, orionClient.memberId); err != nil {
+		return nil, internal.HandleError(err, "failed to initialize FRR config manager")
 	}
 
-	// Intialize the streams to the signaling server
 	if err := orionClient.initializeStream(); err != nil {
-		return nil, err
+		return nil, internal.HandleError(err, "failed to initialize stream")
 	}
 
-	// Login to the server using to initialized sessions
 	if err := orionClient.login(); err != nil {
-		return nil, err
+		return nil, internal.HandleError(err, "failed to login")
 	}
 
-	// Start the listener as a background task
-	go orionClient.listener()
+	go orionClient.startListener()
 
-	return &orionClient, nil
+	return orionClient, nil
 }
 
-// Disposing interfaces and frr peers
+func (c *OrionClientDaemon) startListener() {
+	if err := c.listener(); err != nil {
+		log.Error().Err(err).Msg("listener error")
+	}
+}
+
+// Dispose releases resources such as WireGuard tunnels and BGP sessions.
 func (c *OrionClientDaemon) Dispose() {
-	log.Info().Msg("Disposing the wireguard tunnels")
+	log.Info().Msg("Disposing the WireGuard tunnels")
 	for _, tunnel := range c.wireguardTunnels {
 		tunnel.Dispose()
 	}
-	log.Info().Msg("Disposing the bgp sessions")
+
+	log.Info().Msg("Disposing the BGP sessions")
 	c.frrManager.Peers = make(map[uint32]*Peer)
-	err := c.frrManager.Update()
-	if err != nil {
-		log.Error().Err(err).Msg("failed to dispose the bgp sessions")
+	if err := c.frrManager.Update(); err != nil {
+		log.Error().Err(err).Msg("failed to dispose the BGP sessions")
 	}
 }
