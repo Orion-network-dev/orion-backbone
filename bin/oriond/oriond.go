@@ -2,57 +2,28 @@ package main
 
 import (
 	"context"
-	"crypto/ecdsa"
-	"crypto/x509"
-	"encoding/pem"
 	"flag"
 	"fmt"
-	"net"
 	"os"
 	"time"
 
+	"github.com/MatthieuCoder/OrionV3/bin/oriond/implementation"
 	"github.com/MatthieuCoder/OrionV3/internal"
-	"github.com/MatthieuCoder/OrionV3/internal/proto"
-	"github.com/getsentry/sentry-go"
-	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
-	grpc_sentry "github.com/johnbellone/grpc-middleware-sentry"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"github.com/vishvananda/netlink"
-	"golang.zx2c4.com/wireguard/wgctrl"
-	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	"google.golang.org/grpc"
 )
 
 var (
 	debug          = flag.Bool("debug", false, "change the log level to debug")
-	friendlyName   = flag.String("friendly-name", "", "the public friendly name the instance will have")
-	memberId       = flag.Int64("member-id", 0, "the public friendly name the instance will have")
 	registryServer = flag.String("registry-server", "reg.orionet.re", "the address of the registry server")
 	registryPort   = flag.Uint("registry-port", 443, "the port used by the registry")
-)
-
-var (
-	allIPRanges = net.IPNet{
-		IP:   net.IPv4(0, 0, 0, 0),
-		Mask: net.CIDRMask(0, 32),
-	}
 )
 
 func main() {
 	// Setup logging
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	flag.Parse()
-	err := sentry.Init(sentry.ClientOptions{
-		Dsn: "https://1219038a36ab4c20de64b5c7dc9a9ee5@o228322.ingest.us.sentry.io/4507616497893376",
-		// Set TracesSampleRate to 1.0 to capture 100%
-		// of transactions for performance monitoring.
-		// We recommend adjusting this value in production,
-		TracesSampleRate: 1.0,
-	})
-	if err != nil {
-		log.Fatal().Msgf("sentry.Init: %s", err)
-	}
 
 	// Default level for this example is info, unless debug flag is present
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
@@ -61,276 +32,30 @@ func main() {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 
-	wgClient, err := wgctrl.New()
-	if err != nil {
-		log.Fatal().Err(err).Msgf("Unable to connect to wireguard")
-	}
-
 	// Get TLS credentials
 	cred, err := internal.LoadTLS(false)
 	if err != nil {
-		log.Fatal().Err(err).Msgf("Unable to connect gRPC channel")
+		log.Error().Err(err).Msgf("unable to connect gRPC channel")
+		return
 	}
 
-	conn, err := grpc.NewClient(fmt.Sprintf("%s:%d", *registryServer, *registryPort),
+	conn, err := grpc.NewClient(
+		fmt.Sprintf("%s:%d", *registryServer, *registryPort),
 		grpc.WithTransportCredentials(cred),
 		grpc.WithIdleTimeout(time.Second*120),
-		grpc.WithStreamInterceptor(
-			grpc_middleware.ChainStreamClient(
-				grpc_sentry.StreamClientInterceptor(),
-			),
-		),
-		grpc.WithUnaryInterceptor(
-			grpc_middleware.ChainUnaryClient(
-				grpc_sentry.UnaryClientInterceptor(),
-			),
-		),
+	)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to start the grpc client")
+		return
+	}
+
+	_, err = implementation.NewOrionClientDaemon(
+		context.Background(),
+		conn,
 	)
 
 	if err != nil {
-		log.Fatal().Err(err).Msgf("Unable to connect gRPC channel")
-	}
-
-	// Create the gRPC client
-	registryClient := proto.NewRegistryClient(conn)
-	holepunchingClient := proto.NewHolePunchingServiceClient(conn)
-
-	stream, err := registryClient.SubscribeToStream(context.Background())
-	if err != nil {
-		panic(err)
-	}
-	frrManager, err := internal.NewFrrConfigManager(
-		64511+*memberId,
-		*memberId,
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	tunnels := make([]*internal.WireguardInterface, 255)
-	defer func() {
-		for _, tunnel := range tunnels {
-			tunnel.Dispose()
-		}
-	}()
-
-	// Go routine used to login
-	go func() {
-		log.Debug().Msg("preparing to send the initialization message for authentication")
-
-		// Reading
-		certPEM, err := os.ReadFile(*internal.CertificatePath)
-		if err != nil {
-			log.Fatal().Err(err).Msgf("coundn't open the certificate pem file")
-		}
-
-		privateKey, err := os.ReadFile(*internal.KeyPath)
-		if err != nil {
-			log.Fatal().Err(err).Msgf("coundn't open the certificate key file")
-		}
-		rawCertificate, _ := pem.Decode(privateKey)
-		pk, err := x509.ParsePKCS8PrivateKey(rawCertificate.Bytes)
-
-		if err != nil {
-			log.Fatal().Err(err).Msgf("coundn't read the certificate key file")
-		}
-		ecDSApk := pk.(*ecdsa.PrivateKey)
-		if pk == nil {
-			log.Fatal().Err(err).Msgf("coundn't read the certificate key file")
-		}
-
-		err = stream.Send(&proto.RPCClientEvent{
-			Event: &proto.RPCClientEvent_Initialize{
-				Initialize: internal.CalculateNonce(int64(*memberId), *friendlyName, certPEM, ecDSApk),
-			},
-		})
-
-		if err != nil {
-			log.Fatal().Err(err).Msgf("couldn't swrite the initialization message to the gRPC connection")
-		}
-	}()
-
-	for {
-		data, err := stream.Recv()
-		if err != nil {
-			log.Fatal().Err(err).Msg("failure while reading the gRPC stream")
-		}
-		minute := time.Minute
-
-		if new_client := data.GetNewClient(); new_client != nil {
-			log.Debug().Msg("got new client message, trying to initialize a p2p connection")
-
-			privatekey, err := wgtypes.GeneratePrivateKey()
-			if err != nil {
-				log.Fatal().Err(err).Msg("failure to generate a wireguard private key")
-			}
-			publickey := privatekey.PublicKey()
-
-			tunnel, err := internal.NewWireguardInterface(wgClient, &netlink.LinkAttrs{
-				Name:  fmt.Sprintf("orion%d", new_client.PeerId),
-				Group: 30,
-			}, wgtypes.Config{
-				PrivateKey:   &privatekey,
-				ReplacePeers: true,
-				Peers:        []wgtypes.PeerConfig{},
-			})
-			if err != nil {
-				log.Fatal().Err(err).Msg("cannot make wireguard interface")
-			}
-			tunnels[new_client.PeerId] = tunnel
-
-			ctx := context.Background()
-			holepunch, err := internal.HolePunchTunnel(ctx, wgClient, tunnel, holepunchingClient)
-			if err != nil {
-				log.Error().Err(err).Msg("cannot hole punch interface")
-				tunnel.Dispose()
-				continue
-			}
-
-			// Ask a new connection by emitting a client event
-			err = stream.Send(&proto.RPCClientEvent{
-				Event: &proto.RPCClientEvent_Connect{
-					Connect: &proto.ClientWantToConnectToClient{
-						EndpointAddr:      holepunch.ClientEndpointAddr,
-						EndpointPort:      holepunch.ClientEndpointPort,
-						PublicKey:         publickey[:],
-						FriendlyName:      *friendlyName,
-						DestinationPeerId: new_client.PeerId,
-						SourcePeerId:      int64(*memberId),
-					},
-				},
-			})
-			if err != nil {
-				log.Fatal().Err(err).Msgf("couldn't swrite the initialization message to the gRPC connection")
-			}
-
-			continue
-		}
-
-		if wants_to := data.GetWantsToConnect(); wants_to != nil {
-			privatekey, err := wgtypes.GeneratePrivateKey()
-			if err != nil {
-				log.Error().Err(err).Msg("cannot make wireguard interface")
-				continue
-			}
-			publickey := privatekey.PublicKey()
-
-			presharedKey, err := wgtypes.GenerateKey()
-			if err != nil {
-				log.Error().Err(err).Msg("cannot make wireguard interface")
-				continue
-			}
-
-			tunnel, err := internal.NewWireguardInterface(wgClient, &netlink.LinkAttrs{
-				Name:  fmt.Sprintf("orion%d", wants_to.SourcePeerId),
-				Group: 30,
-			}, wgtypes.Config{
-				PrivateKey: &privatekey,
-			})
-			if err != nil {
-				log.Error().Err(err).Msg("cannot make wireguard interface")
-				continue
-			}
-			tunnels[wants_to.SourcePeerId] = tunnel
-
-			result, err := internal.HolePunchTunnel(context.Background(), wgClient, tunnel, holepunchingClient)
-			if err != nil {
-				log.Error().Err(err).Msg("cannot holepunch interface")
-				continue
-			}
-
-			// Calculate the ip address
-			selfIP, otherIP, err := internal.GetSelfAddress(uint32(*memberId), uint32(wants_to.SourcePeerId))
-			if err != nil {
-				panic(err)
-			}
-
-			tunnel.SetPeers(wgClient, []wgtypes.PeerConfig{
-				{
-					Endpoint: &net.UDPAddr{
-						IP:   net.ParseIP(wants_to.EndpointAddr),
-						Port: int(wants_to.EndpointPort),
-					},
-					PresharedKey:                &presharedKey,
-					PublicKey:                   wgtypes.Key(wants_to.PublicKey),
-					PersistentKeepaliveInterval: &minute,
-					AllowedIPs: []net.IPNet{
-						allIPRanges,
-					},
-				},
-			})
-			tunnel.SetAddress(selfIP)
-			frrManager.Peers = append(frrManager.Peers, internal.Peer{
-				ASN:     wants_to.SourcePeerId + 64511,
-				Address: otherIP.IP.String(),
-			})
-
-			response := &proto.ClientWantToConnectToClientResponse{
-				EndpointAddr:      result.ClientEndpointAddr,
-				EndpointPort:      result.ClientEndpointPort,
-				PublicKey:         publickey[:],
-				FriendlyName:      *friendlyName,
-				SourcePeerId:      int64(*memberId),
-				DestinationPeerId: wants_to.SourcePeerId,
-				PresharedKey:      presharedKey[:],
-			}
-			stream.Send(&proto.RPCClientEvent{
-				Event: &proto.RPCClientEvent_ConnectResponse{
-					ConnectResponse: response,
-				},
-			})
-			err = frrManager.Update()
-			if err != nil {
-				panic(err)
-			}
-			continue
-		}
-
-		if response := data.GetWantsToConnectResponse(); response != nil {
-			// Now that the connection is done, we simply need to add the peer
-			wg := tunnels[response.SourcePeerId]
-
-			if wg != nil {
-				// Calculate the ip address
-				selfIP, otherIP, err := internal.GetSelfAddress(uint32(*memberId), uint32(response.SourcePeerId))
-				if err != nil {
-					panic(err)
-				}
-
-				wg.SetPeers(wgClient, []wgtypes.PeerConfig{
-					{
-						Endpoint: &net.UDPAddr{
-							IP:   net.ParseIP(response.EndpointAddr),
-							Port: int(response.EndpointPort),
-						},
-						PresharedKey:                (*wgtypes.Key)(response.PresharedKey),
-						PublicKey:                   wgtypes.Key(response.PublicKey),
-						PersistentKeepaliveInterval: &minute,
-						AllowedIPs: []net.IPNet{
-							allIPRanges,
-						},
-					},
-				})
-				wg.SetAddress(selfIP)
-
-				frrManager.Peers = append(frrManager.Peers, internal.Peer{
-					ASN:     response.SourcePeerId + 64511,
-					Address: otherIP.IP.String(),
-				})
-				err = frrManager.Update()
-				if err != nil {
-					panic(err)
-				}
-			}
-
-		}
-
-		if disconnect := data.GetRemovedClient(); disconnect != nil {
-			wg := tunnels[disconnect.PeerId]
-
-			if wg != nil {
-				wg.Dispose()
-			}
-		}
+		log.Error().Err(err).Msgf("failed to bring up orion client daemon")
+		return
 	}
 }

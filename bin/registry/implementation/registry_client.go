@@ -1,4 +1,4 @@
-package internal
+package implementation
 
 import (
 	"github.com/MatthieuCoder/OrionV3/internal/proto"
@@ -6,7 +6,7 @@ import (
 )
 
 type Client struct {
-	memberId             int64
+	memberId             uint32
 	friendlyName         string
 	invitations          chan *proto.ClientWantToConnectToClient
 	invitationsResponses chan *proto.ClientWantToConnectToClientResponse
@@ -16,7 +16,7 @@ func (c *Client) Allocate(r *OrionRegistryImplementation) {
 	r.clientPoolLock.Lock()
 	defer r.clientPoolLock.Unlock()
 	r.clientPool[c.memberId] = c
-	log.Debug().Int64("client-id", c.memberId).Msg("Alloc client")
+	log.Debug().Uint32("client-id", c.memberId).Msg("Alloc client")
 }
 
 func (c *Client) Dispose(r *OrionRegistryImplementation) {
@@ -29,10 +29,10 @@ func (c *Client) Dispose(r *OrionRegistryImplementation) {
 		FriendlyName: c.friendlyName,
 	})
 
-	log.Debug().Int64("client-id", c.memberId).Msg("Dealloc client")
+	log.Debug().Uint32("client-id", c.memberId).Msg("Dealloc client")
 }
 
-func NewClient(MemberId int64, FriendlyName string) *Client {
+func NewClient(MemberId uint32, FriendlyName string) *Client {
 	return &Client{
 		invitations:          make(chan *proto.ClientWantToConnectToClient),
 		invitationsResponses: make(chan *proto.ClientWantToConnectToClientResponse),

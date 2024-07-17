@@ -4,6 +4,7 @@ import (
 	"net"
 
 	"github.com/praserx/ipconv"
+	"github.com/rs/zerolog/log"
 )
 
 func szudzikPairing(x uint32, y uint32) uint32 {
@@ -23,8 +24,10 @@ func GetSelfAddress(self uint32, other uint32) (*net.IPNet, *net.IPNet, error) {
 
 	ipInt, err := ipconv.IPv4ToInt(baseIp)
 	if err != nil {
+		log.Error().Err(err).Msgf("failed to convert to ip address to a uint32 interger")
 		return nil, nil, err
 	}
+
 	selfIPAddress := ipInt + uint32(peer<<1)
 	otherIPAddress := ipInt + uint32(peer<<1)
 

@@ -10,13 +10,13 @@ service Registry {
 // Event sent to all clients when a new orion client joined the network
 message ClientNewOnNetworkEvent {
   string friendly_name = 1;
-  int64 peer_id = 2;
+  uint32 peer_id = 2;
 }
 
 // Sent when a clients lost connection and needs to be completely kicked from the network.
 message ClientDisconnectedTeardownEvent {
   string friendly_name = 1;
-  int64 peer_id = 2;
+  uint32 peer_id = 2;
 }
 
 
@@ -34,7 +34,7 @@ message InitializeRequest {
   string friendly_name = 1;
   int64 timestamp_signed = 2;
   bytes signed = 3;
-  int64 member_id = 4;
+  uint32 member_id = 4;
   bytes certificate = 5;
 }
 
@@ -44,8 +44,8 @@ message ClientWantToConnectToClient {
       uint32 endpoint_port = 2;
       bytes public_key = 3;
       string friendly_name = 5;
-      int64 destination_peer_id = 6;
-      int64 source_peer_id = 7;
+      uint32 destination_peer_id = 6;
+      uint32 source_peer_id = 7;
 }
 
 // Response to a ClientWantToConnectToClient
@@ -54,9 +54,9 @@ message ClientWantToConnectToClientResponse {
   uint32 endpoint_port = 2;
   bytes public_key = 3;
   string friendly_name = 4;
-  int64 destination_peer_id = 5;
+  uint32 destination_peer_id = 5;
   bytes preshared_key = 7;
-  int64 source_peer_id = 6;
+  uint32 source_peer_id = 6;
 }
 
 message RPCClientEvent {

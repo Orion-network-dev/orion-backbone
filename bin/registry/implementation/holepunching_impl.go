@@ -1,4 +1,4 @@
-package internal
+package implementation
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/MatthieuCoder/OrionV3/internal"
 	"github.com/MatthieuCoder/OrionV3/internal/proto"
 	"golang.zx2c4.com/wireguard/wgctrl"
 
@@ -24,7 +25,7 @@ var (
 
 type OrionHolePunchingImplementation struct {
 	wgClient      *wgctrl.Client
-	tasksAssigner LockableTasks
+	tasksAssigner internal.LockableTasks
 	proto.UnimplementedHolePunchingServiceServer
 }
 
@@ -38,7 +39,7 @@ func NewOrionHolePunchingImplementation() (*OrionHolePunchingImplementation, err
 	log.Info().Msg("initialized the Orion hole-punching api implementation")
 	return &OrionHolePunchingImplementation{
 		wgClient:      wg,
-		tasksAssigner: NewLockableTasks(*holePunchingInstances),
+		tasksAssigner: internal.NewLockableTasks(*holePunchingInstances),
 	}, nil
 }
 
@@ -79,7 +80,7 @@ func (r *OrionHolePunchingImplementation) Session(sessionInit *proto.HolePunchin
 	interfaceName := fmt.Sprintf("%s%d", *holePunchingInterfacePrefix, task.Id)
 	log.Info().Str("interface-name", interfaceName).Msg("creating interface")
 
-	wgInt, err := NewWireguardInterface(
+	wgInt, err := internal.NewWireguardInterface(
 		r.wgClient,
 		&netlink.LinkAttrs{
 			Name: interfaceName,

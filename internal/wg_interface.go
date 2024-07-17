@@ -10,7 +10,7 @@ import (
 )
 
 type WireguardInterface struct {
-	wglink   WireguardNetLink
+	WgLink   WireguardNetLink
 	wgconfig wgtypes.Config
 }
 
@@ -45,33 +45,33 @@ func NewWireguardInterface(wg *wgctrl.Client, interfaceAttrs *netlink.LinkAttrs,
 	}
 	log.Debug().Str("interface", interfaceAttrs.Name).Msg("finished setting up interface")
 	return &WireguardInterface{
-		wglink: wglink,
+		WgLink: wglink,
 	}, nil
 }
 
 func (c *WireguardInterface) SetPeers(wg *wgctrl.Client, peers []wgtypes.PeerConfig) error {
-	log.Debug().Str("interface", c.wglink.InterfaceAttrs.Name).Msg("updating peers on interface")
+	log.Debug().Str("interface", c.WgLink.InterfaceAttrs.Name).Msg("updating peers on interface")
 	c.wgconfig.Peers = peers
 	c.wgconfig.ReplacePeers = true
 
-	if err := wg.ConfigureDevice(c.wglink.InterfaceAttrs.Name, c.wgconfig); err != nil {
+	if err := wg.ConfigureDevice(c.WgLink.InterfaceAttrs.Name, c.wgconfig); err != nil {
 		log.Error().Err(err).Msg("failed to apply the wireguard configuration")
-		netlink.LinkDel(c.wglink)
+		netlink.LinkDel(c.WgLink)
 		return err
 	}
 	return nil
 }
 
 func (c *WireguardInterface) Dispose() {
-	log.Debug().Str("interface", c.wglink.InterfaceAttrs.Name).Msg("disposing wireguard interface")
-	if err := netlink.LinkDel(c.wglink); err != nil {
+	log.Debug().Str("interface", c.WgLink.InterfaceAttrs.Name).Msg("disposing wireguard interface")
+	if err := netlink.LinkDel(c.WgLink); err != nil {
 		log.Error().Err(err).Msg("failed to destroy interface")
 	}
 }
 
 func (c *WireguardInterface) SetAddress(ip *net.IPNet) {
-	log.Debug().Str("interface", c.wglink.InterfaceAttrs.Name).Msg("updating the IP address")
-	if err := netlink.AddrAdd(c.wglink, &netlink.Addr{
+	log.Debug().Str("interface", c.WgLink.InterfaceAttrs.Name).Msg("updating the IP address")
+	if err := netlink.AddrAdd(c.WgLink, &netlink.Addr{
 		IPNet: ip,
 	}); err != nil {
 		log.Error().Err(err).Msg("failed to assign IP addresses")

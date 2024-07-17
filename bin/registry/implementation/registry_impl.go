@@ -1,4 +1,4 @@
-package internal
+package implementation
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/MatthieuCoder/OrionV3/internal"
 	"github.com/MatthieuCoder/OrionV3/internal/proto"
 	"github.com/rs/zerolog/log"
 	"github.com/teivah/broadcast"
@@ -23,7 +24,7 @@ type OrionRegistryImplementation struct {
 
 func NewOrionRegistryImplementation() (*OrionRegistryImplementation, error) {
 	// Reading the root certificate
-	ca, err := os.ReadFile(*AuthorityPath)
+	ca, err := os.ReadFile(*internal.AuthorityPath)
 	if err != nil {
 		log.Debug().Err(err).Msg("failed to import the root ca certificate")
 		return nil, err
@@ -79,7 +80,7 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibe_event proto.Reg
 		client.Allocate(r)
 		defer client.Dispose(r)
 
-		log.Info().Int64("member-id", client.memberId).Msg("client authenticated")
+		log.Info().Uint32("member-id", client.memberId).Msg("client authenticated")
 
 		r.newClients.Broadcast(&proto.ClientNewOnNetworkEvent{
 			FriendlyName: initialize.FriendlyName,
@@ -100,7 +101,7 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibe_event proto.Reg
 			select {
 			case newClient := <-newClients.Ch():
 				// When a new client joins, we send a notification message
-				log.Debug().Int64("new-member-id", newClient.PeerId).Int64("session", client.memberId).Msgf("notifying of new client")
+				log.Debug().Uint32("new-member-id", newClient.PeerId).Uint32("session", client.memberId).Msgf("notifying of new client")
 				subscibe_event.Send(&proto.RPCServerEvent{
 					Event: &proto.RPCServerEvent_NewClient{
 						NewClient: newClient,
@@ -109,7 +110,7 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibe_event proto.Reg
 			case invitation := <-client.invitations:
 				if invitation.DestinationPeerId == client.memberId {
 
-					log.Debug().Int64("src-member-id", invitation.SourcePeerId).Int64("dst-member-id", invitation.DestinationPeerId).Msg("notifying of new session invitation")
+					log.Debug().Uint32("src-member-id", invitation.SourcePeerId).Uint32("dst-member-id", invitation.DestinationPeerId).Msg("notifying of new session invitation")
 
 					subscibe_event.Send(&proto.RPCServerEvent{
 						Event: &proto.RPCServerEvent_WantsToConnect{
@@ -117,12 +118,12 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibe_event proto.Reg
 						},
 					})
 				} else {
-					log.Error().Int64("src-member-id", invitation.SourcePeerId).Int64("dst-member-id", invitation.DestinationPeerId).Int64("routine-member-id", client.memberId).Msg("wrong dst-id for this routine")
+					log.Error().Uint32("src-member-id", invitation.SourcePeerId).Uint32("dst-member-id", invitation.DestinationPeerId).Uint32("routine-member-id", client.memberId).Msg("wrong dst-id for this routine")
 				}
 			case invitation_response := <-client.invitationsResponses:
 
 				if invitation_response.DestinationPeerId == client.memberId {
-					log.Debug().Int64("src-member-id", invitation_response.SourcePeerId).Int64("dst-member-id", client.memberId).Msg("notifying of new invitation request")
+					log.Debug().Uint32("src-member-id", invitation_response.SourcePeerId).Uint32("dst-member-id", client.memberId).Msg("notifying of new invitation request")
 
 					subscibe_event.Send(&proto.RPCServerEvent{
 						Event: &proto.RPCServerEvent_WantsToConnectResponse{
@@ -130,10 +131,10 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibe_event proto.Reg
 						},
 					})
 				} else {
-					log.Error().Int64("src-member-id", invitation_response.SourcePeerId).Int64("dst-member-id", invitation_response.DestinationPeerId).Int64("routine-member-id", client.memberId).Msg("wrong dst-id for this routine")
+					log.Error().Uint32("src-member-id", invitation_response.SourcePeerId).Uint32("dst-member-id", invitation_response.DestinationPeerId).Uint32("routine-member-id", client.memberId).Msg("wrong dst-id for this routine")
 				}
 			case disposed := <-disposedClients.Ch():
-				log.Debug().Int64("disposed-member-id", disposed.PeerId).Int64("member-id", client.memberId).Msg("disposing client")
+				log.Debug().Uint32("disposed-member-id", disposed.PeerId).Uint32("member-id", client.memberId).Msg("disposing client")
 
 				subscibe_event.Send(&proto.RPCServerEvent{
 					Event: &proto.RPCServerEvent_RemovedClient{
@@ -157,7 +158,7 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibe_event proto.Reg
 
 		if connect := event.GetConnect(); connect != nil {
 			if connect.SourcePeerId == client.memberId && connect.DestinationPeerId != client.memberId {
-				log.Debug().Int64("source", client.memberId).Int64("destination", connect.DestinationPeerId).Msgf("Connect Init")
+				log.Debug().Uint32("source", client.memberId).Uint32("destination", connect.DestinationPeerId).Msgf("Connect Init")
 				if dstClient := r.clientPool[connect.DestinationPeerId]; dstClient != nil {
 					dstClient.invitations <- connect
 				} else {
@@ -167,7 +168,7 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibe_event proto.Reg
 		}
 		if connect_response := event.GetConnectResponse(); connect_response != nil {
 			if connect_response.SourcePeerId == client.memberId && connect_response.DestinationPeerId != client.memberId {
-				log.Debug().Int64("source", client.memberId).Int64("destination", connect_response.DestinationPeerId).Msgf("Connect Response")
+				log.Debug().Uint32("source", client.memberId).Uint32("destination", connect_response.DestinationPeerId).Msgf("Connect Response")
 				if dstClient := r.clientPool[connect_response.DestinationPeerId]; dstClient != nil {
 					dstClient.invitationsResponses <- connect_response
 				} else {
