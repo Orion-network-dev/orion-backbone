@@ -33,7 +33,7 @@ type tmplContext struct {
 	ASN     uint32
 	OrionId uint32
 	Groups  []group
-	Peers   []*Peer
+	Peers   []Peer
 }
 
 // Struct used to interact and issue the FRR configuration file updates.
@@ -78,9 +78,9 @@ func NewFrrConfigManager(ASN uint32, OrionId uint32) (*FrrConfigManager, error) 
 // `bgpd` which is the BGP daemon used through the Orion network.
 func (c *FrrConfigManager) Update() error {
 	log.Debug().Msg("updating the FRR configuration")
-	peers := make([]*Peer, len(c.Peers))
+	peers := make([]Peer, len(c.Peers))
 	for _, value := range c.Peers {
-		peers = append(peers, value)
+		peers = append(peers, *value)
 	}
 
 	// We initialize some basic information regarding the BGP sessions
@@ -94,12 +94,10 @@ func (c *FrrConfigManager) Update() error {
 
 	// From the list of peers we infer the list of bgp groups to connect to.
 	for _, peer := range context.Peers {
-		if peer != nil {
-			log.Debug().Uint32("asn", peer.ASN).Msg("new group computed")
-			context.Groups = append(context.Groups, group{
-				ASN: peer.ASN,
-			})
-		}
+		log.Debug().Uint32("asn", peer.ASN).Msg("new group computed")
+		context.Groups = append(context.Groups, group{
+			ASN: peer.ASN,
+		})
 	}
 
 	// In order to call the frr-reload.py script, we must render the configuration
