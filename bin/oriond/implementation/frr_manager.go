@@ -60,7 +60,7 @@ func NewFrrConfigManager(ASN uint32, OrionId uint32) (*FrrConfigManager, error) 
 		return nil, err
 	}
 	config := &FrrConfigManager{
-		Peers:    make(map[uint32]*Peer),
+		Peers:    map[uint32]*Peer{},
 		selfASN:  ASN,
 		OrionId:  OrionId,
 		template: tmpl,
@@ -78,9 +78,10 @@ func NewFrrConfigManager(ASN uint32, OrionId uint32) (*FrrConfigManager, error) 
 // `bgpd` which is the BGP daemon used through the Orion network.
 func (c *FrrConfigManager) Update() error {
 	log.Debug().Msg("updating the FRR configuration")
-	peers := make([]Peer, len(c.Peers))
+	peers := []Peer{}
+
 	for _, value := range c.Peers {
-		if value.ASN != 0 {
+		if value != nil {
 			peers = append(peers, *value)
 		}
 	}
@@ -91,7 +92,7 @@ func (c *FrrConfigManager) Update() error {
 		ASN:     c.selfASN,
 		OrionId: c.OrionId,
 		Peers:   peers,
-		Groups:  make([]group, 0),
+		Groups:  []group{},
 	}
 
 	// From the list of peers we infer the list of bgp groups to connect to.

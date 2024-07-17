@@ -12,13 +12,13 @@ import (
 )
 
 var (
-	memberIdRegex = regexp.MustCompile(`(.*?).member.orionet.re`)
-	memberId      = flag.Uint("override-member-id", 0, "An override of the memberID of this instance")
-	asn           = flag.Int("override-asn", 0, "An override of the ASN number used by this instance")
+	memberIdRegex    = regexp.MustCompile(`(.*?).member.orionet.re`)
+	memberIdOverride = flag.Uint("override-member-id", 0, "An override of the memberID of this instance")
+	asn              = flag.Int("override-asn", 0, "An override of the ASN number used by this instance")
 )
 
 func (c *OrionClientDaemon) resolveIdentity() error {
-	if *memberId == 0 {
+	if *memberIdOverride == 0 {
 		certificateFile, err := os.ReadFile(*internal.CertificatePath)
 		if err != nil {
 			log.Error().Err(err).Str("file", *internal.CertificatePath).Msgf("Cannot open the certificate path")
@@ -54,7 +54,7 @@ func (c *OrionClientDaemon) resolveIdentity() error {
 			return err
 		}
 	} else {
-		c.memberId = uint32(*memberId)
+		c.memberId = uint32(*memberIdOverride)
 	}
 
 	if *asn == 0 {

@@ -12,7 +12,7 @@ router bgp {{ .ASN }}
 {{- end -}}
 {{- range .Peers }}
  neighbor {{ .Address }} peer-group orion{{ .ASN }}
-{{ end -}}
+{{- end }}
  !
  address-family ipv4 unicast
   network 10.30.{{ .OrionId }}.0/24

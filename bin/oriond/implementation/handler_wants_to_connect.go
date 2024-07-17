@@ -62,7 +62,7 @@ func (c *OrionClientDaemon) handleWantsToConnect(event *proto.ClientWantToConnec
 	}
 
 	// Calculate the ip address
-	selfIP, otherIP, err := internal.GetSelfAddress(uint32(*memberId), event.SourcePeerId)
+	selfIP, otherIP, err := internal.GetSelfAddress(c.memberId, event.SourcePeerId)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to calculate the IP adresses from the adressing plan")
 		return
