@@ -128,7 +128,7 @@ func (c *FrrConfigManager) Update() error {
 	execReload := exec.Command(*frrReloadBinary, "--reload", absolutePath)
 	// For debug purposes, we might want to link the frr-reload.py script stdout and stderr to
 	// the current process ones.
-	if zerolog.GlobalLevel() != zerolog.DebugLevel {
+	if zerolog.GlobalLevel() == zerolog.DebugLevel {
 		execReload.Stdout = os.Stdout
 		execReload.Stderr = os.Stderr
 	}

@@ -46,5 +46,4 @@ func (c *OrionClientDaemon) handleWantsToConnectResponse(event *proto.ClientWant
 			return
 		}
 	}
-
 }
