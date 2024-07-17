@@ -55,13 +55,12 @@ func main() {
 		ctx,
 		conn,
 	)
-	defer orionDaemon.Dispose()
-	defer cancel()
-
 	if err != nil {
 		log.Error().Err(err).Msgf("failed to bring up orion client daemon")
 		return
 	}
+	defer orionDaemon.Dispose()
+	defer cancel()
 
 	// Wait for exit signal
 	sigs := make(chan os.Signal, 1)
