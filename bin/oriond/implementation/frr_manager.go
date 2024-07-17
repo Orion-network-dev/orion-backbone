@@ -94,10 +94,12 @@ func (c *FrrConfigManager) Update() error {
 
 	// From the list of peers we infer the list of bgp groups to connect to.
 	for _, peer := range context.Peers {
-		log.Debug().Uint32("asn", peer.ASN).Msg("new group computed")
-		context.Groups = append(context.Groups, group{
-			ASN: peer.ASN,
-		})
+		if peer != nil {
+			log.Debug().Uint32("asn", peer.ASN).Msg("new group computed")
+			context.Groups = append(context.Groups, group{
+				ASN: peer.ASN,
+			})
+		}
 	}
 
 	// In order to call the frr-reload.py script, we must render the configuration
