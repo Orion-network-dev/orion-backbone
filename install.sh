@@ -31,3 +31,6 @@ echo "Downloaded version $VERSION... Installing using APT"
 apt install -q --allow-downgrades -y /tmp/orion.deb &> /dev/null
 echo "Done. Cleaning up."
 rm /tmp/orion.deb
+
+echo "Reloading sevices"
+systemctl restart oriond
