@@ -14,6 +14,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 var (
@@ -23,33 +24,20 @@ var (
 )
 
 func main() {
-	// Setup logging
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	flag.Parse()
 
-	// Default level for this example is info, unless debug flag is present
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	if *debug {
-		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	}
-
-	// Get TLS credentials
 	cred, err := internal.LoadTLS(false)
 	if err != nil {
 		log.Error().Err(err).Msgf("unable to connect gRPC channel")
 		return
 	}
 
-	conn, err := grpc.NewClient(
-		fmt.Sprintf("%s:%d", *registryServer, *registryPort),
-		grpc.WithTransportCredentials(cred),
-		grpc.WithIdleTimeout(time.Second*120),
-	)
+	conn, err := createGRPCClientConnection(cred)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to start the grpc client")
 		return
 	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	orionDaemon, err := implementation.NewOrionClientDaemon(
 		ctx,
@@ -63,7 +51,30 @@ func main() {
 	defer cancel()
 
 	// Wait for exit signal
+	waitForExitSignal()
+}
+
+func waitForExitSignal() {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	<-sigs
+}
+
+func setupLogging() {
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+
+	if *debug {
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	} else {
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	}
+}
+
+func createGRPCClientConnection(cred credentials.TransportCredentials) (*grpc.ClientConn, error) {
+	return grpc.NewClient(
+		fmt.Sprintf("%s:%d", *registryServer, *registryPort),
+		grpc.WithTransportCredentials(cred),
+		grpc.WithIdleTimeout(time.Second*120),
+	)
 }
