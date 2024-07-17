@@ -8,6 +8,7 @@ import (
 
 	"github.com/MatthieuCoder/OrionV3/internal"
 	"github.com/MatthieuCoder/OrionV3/internal/proto"
+	"github.com/rs/zerolog/log"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"google.golang.org/grpc"
 )
@@ -88,4 +89,18 @@ func NewOrionClientDaemon(
 	go orionClient.listener()
 
 	return &orionClient, nil
+}
+
+// Disposing interfaces and frr peers
+func (c *OrionClientDaemon) Dispose() {
+	log.Info().Msg("Disposing the wireguard tunnels")
+	for _, tunnel := range c.wireguardTunnels {
+		tunnel.Dispose()
+	}
+	log.Info().Msg("Disposing the bgp sessions")
+	c.frrManager.Peers = make(map[uint32]*Peer)
+	err := c.frrManager.Update()
+	if err != nil {
+		log.Error().Err(err).Msg("failed to dispose the bgp sessions")
+	}
 }

@@ -5,6 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/MatthieuCoder/OrionV3/bin/oriond/implementation"
@@ -48,14 +50,21 @@ func main() {
 		log.Error().Err(err).Msg("failed to start the grpc client")
 		return
 	}
-
-	_, err = implementation.NewOrionClientDaemon(
-		context.Background(),
+	ctx, cancel := context.WithCancel(context.Background())
+	orionDaemon, err := implementation.NewOrionClientDaemon(
+		ctx,
 		conn,
 	)
+	defer orionDaemon.Dispose()
+	defer cancel()
 
 	if err != nil {
 		log.Error().Err(err).Msgf("failed to bring up orion client daemon")
 		return
 	}
+
+	// Wait for exit signal
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	<-sigs
 }
