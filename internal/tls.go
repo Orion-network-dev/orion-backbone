@@ -12,44 +12,41 @@ import (
 )
 
 var (
-	AuthorityPath   = flag.String("tls-authority-path", "/etc/oriond/ca.crt", "Path to the certificate authority file")
-	CertificatePath = flag.String("tls-certificate-path", "/etc/oriond/identity.crt", "Path to the certificate authority file")
-	KeyPath         = flag.String("tls-key-path", "/etc/oriond/identity.key", "Path to the certificate authority file")
+	// AuthorityPath is the path to the certificate authority file.
+	AuthorityPath = flag.String("tls-authority-path", "/etc/oriond/ca.crt", "Path to the certificate authority file")
+	// CertificatePath is the path to the client certificate file.
+	CertificatePath = flag.String("tls-certificate-path", "/etc/oriond/identity.crt", "Path to the client certificate file")
+	// KeyPath is the path to the client key file.
+	KeyPath = flag.String("tls-key-path", "/etc/oriond/identity.key", "Path to the client key file")
 )
 
-func loadAuthorityPool() (*x509.CertPool, error) {
-
-	// Load the CA certificate
-	trustedCert, err := os.ReadFile(*AuthorityPath)
-	if err != nil {
-		return nil, err
-	}
-
-	// Put the CA certificate into the certificate pool
-	certPool := x509.NewCertPool()
-	if !certPool.AppendCertsFromPEM(trustedCert) {
-		return nil, fmt.Errorf("the CA certificate couldn't be constructed")
-	}
-
-	return certPool, nil
-}
-
+// LoadTLS loads the TLS configuration using the client certificate, key, and CA certificate.
+// If clientCerts is true, it also sets up client authentication.
 func LoadTLS(clientCerts bool) (credentials.TransportCredentials, error) {
-	log.Debug().Str("authority-path", *AuthorityPath).Str("certificate-path", *CertificatePath).Str("key-path", *KeyPath).Msg("loading the certificates for login")
+	log.Debug().
+		Str("authority-path", *AuthorityPath).
+		Str("certificate-path", *CertificatePath).
+		Str("key-path", *KeyPath).
+		Msg("loading the certificates for login")
 
-	// Load the client certificate and its key
 	clientCert, err := tls.LoadX509KeyPair(*CertificatePath, *KeyPath)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to load the certificate")
-		return nil, err
-	}
-	authorityPool, err := loadAuthorityPool()
-	if err != nil {
-		log.Error().Err(err).Msg("failed to load the authority files")
-		return nil, err
+		return nil, handleError(err, "failed to load client certificate")
 	}
 
-	// Create the TLS configuration
+	authorityPool, err := loadAuthorityPool()
+	if err != nil {
+		return nil, handleError(err, "failed to load the authority pool")
+	}
+
+	tlsConfig := createTLSConfig(clientCert, authorityPool, clientCerts)
+
+	return credentials.NewTLS(tlsConfig), nil
+}
+
+// createTLSConfig creates a TLS configuration using the provided client certificate and CA pool.
+// If clientCerts is true, it also sets up client authentication with the CA pool.
+func createTLSConfig(clientCert tls.Certificate, authorityPool *x509.CertPool, clientCerts bool) *tls.Config {
 	tlsConfig := &tls.Config{
 		Certificates: []tls.Certificate{clientCert},
 		RootCAs:      authorityPool,
@@ -61,6 +58,20 @@ func LoadTLS(clientCerts bool) (credentials.TransportCredentials, error) {
 		tlsConfig.ClientCAs = authorityPool
 	}
 
-	// Return new TLS credentials based on the TLS configuration
-	return credentials.NewTLS(tlsConfig), nil
+	return tlsConfig
+}
+
+// loadAuthorityPool loads the CA certificate into a new x509.CertPool.
+func loadAuthorityPool() (*x509.CertPool, error) {
+	trustedCert, err := os.ReadFile(*AuthorityPath)
+	if err != nil {
+		return nil, handleError(err, "failed to read CA certificate")
+	}
+
+	certPool := x509.NewCertPool()
+	if !certPool.AppendCertsFromPEM(trustedCert) {
+		return nil, handleError(fmt.Errorf("the CA certificate couldn't be constructed"), "failed to append CA certificate to pool")
+	}
+
+	return certPool, nil
 }
