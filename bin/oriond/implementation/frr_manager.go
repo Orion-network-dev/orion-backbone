@@ -108,7 +108,8 @@ func (c *FrrConfigManager) Update() error {
 		return err
 	}
 	// Since all temporary files are in the /tmp directory, we can simply infer the full path.
-	absolutePath := fmt.Sprintf("/tmp/%s", tempConfig.Name())
+	absolutePath := tempConfig.Name()
+
 	defer func() {
 		log.Debug().Msg("cleaning up temporary files")
 		// We do not delete the temporary files when running in debug mode.
