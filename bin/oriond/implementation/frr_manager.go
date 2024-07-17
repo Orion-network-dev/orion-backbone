@@ -125,6 +125,7 @@ func (c *FrrConfigManager) Update() error {
 		return err
 	}
 
+	log.Debug().Str("config-file", absolutePath).Msg("running frr-reload.py")
 	execReload := exec.Command(*frrReloadBinary, "--reload", absolutePath)
 	// For debug purposes, we might want to link the frr-reload.py script stdout and stderr to
 	// the current process ones.
