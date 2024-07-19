@@ -32,8 +32,8 @@ builds:
     binary: orion-registry
 archives: []
 nfpms:
-  - id: orion
-    package_name: orion
+  - id: orion-backbone
+    package_name: orion-backbone
     file_name_template: "{{ .ConventionalFileName }}"
     vendor: Matthieu Pignolet
     homepage: https://mpgn.dev/
