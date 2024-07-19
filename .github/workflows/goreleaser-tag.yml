@@ -20,7 +20,7 @@ jobs:
           version: 'latest'
           args: release --clean
         env:
-          GITHUB_TOKEN: ${{ secrets.API_APT_GITHUB }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: mkdir -p output-apt-repo/orion-backbone/
       # Download the current apt repository
       - uses: actions/checkout@v4
