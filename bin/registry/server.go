@@ -54,7 +54,7 @@ func main() {
 		}),
 		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
 			MinTime:             time.Second * 15,
-			PermitWithoutStream: false,
+			PermitWithoutStream: true,
 		}),
 	)
 
