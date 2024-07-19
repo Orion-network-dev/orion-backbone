@@ -32,3 +32,4 @@ jobs:
           user_email: 'orion+backbone@mpgn.dev'
           user_name: 'Orion-Backbone Release'
           commit_message: 'Bump the orion-backbone deb file'
+          use_rsync: 1
