@@ -14,6 +14,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 )
 
 var (
@@ -45,6 +46,11 @@ func main() {
 		fmt.Sprintf("%s:%d", *registryServer, *registryPort),
 		grpc.WithTransportCredentials(cred),
 		grpc.WithIdleTimeout(time.Second*120),
+		grpc.WithKeepaliveParams(keepalive.ClientParameters{
+			Time:                time.Second * 20,
+			Timeout:             time.Second * 1,
+			PermitWithoutStream: false,
+		}),
 	)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to start the grpc client")

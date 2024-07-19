@@ -4,6 +4,7 @@ import (
 	"flag"
 	"net"
 	"os"
+	"time"
 
 	"github.com/MatthieuCoder/OrionV3/bin/registry/implementation"
 	"github.com/MatthieuCoder/OrionV3/internal"
@@ -11,6 +12,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 )
 
 var (
@@ -44,7 +46,17 @@ func main() {
 	}
 
 	// Create a new gRPC server
-	s := grpc.NewServer(grpc.Creds(cred))
+	s := grpc.NewServer(
+		grpc.Creds(cred),
+		grpc.KeepaliveParams(keepalive.ServerParameters{
+			Time:    time.Second * 20,
+			Timeout: time.Second * 1,
+		}),
+		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+			MinTime:             time.Second * 15,
+			PermitWithoutStream: false,
+		}),
+	)
 
 	registry, err := implementation.NewOrionRegistryImplementation()
 	if err != nil {
