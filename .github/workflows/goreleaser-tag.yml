@@ -21,15 +21,16 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Pushes test file
-        uses: dmnemec/copy_file_to_another_repo_action@main
+      - run: |
+          mkdir -p output-apt-repo/orion-backbone/
+          cp dist/orion*.deb output-apt-repo/orion-backbone/
+      - name: Pushes to the apt repository
+        uses: cpina/github-action-push-to-another-repository@main
         env:
           API_TOKEN_GITHUB: ${{ secrets.API_APT_GITHUB }}
         with:
-          source_file: 'dist/orion_*.deb'
-          destination_repo: 'Orion-network-dev/apt-registry'
-          destination_folder: 'orion-backbone'
-          user_email: 'orion+backbone@mpgn.dev'
-          user_name: 'Orion-Backbone Release'
-          commit_message: 'Bump the orion-backbone deb file'
-          use_rsync: 1
+          source-directory: 'output-apt-repo'
+          destination-github-username: 'Orion-network-dev'
+          destination-repository-name: 'apt-registry'
+          user-email: 'orion+backbone@mpgn.dev'
+          target-branch: main
