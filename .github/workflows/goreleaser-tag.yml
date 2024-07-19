@@ -28,6 +28,7 @@ jobs:
           repository: Orion-network-dev/apt-registry
           path: output-apt-repo/
       - run: cp dist/orion*.deb output-apt-repo/orion-backbone/
+      - run: rm -rf output-apt-repo/.git
       - name: Pushes to the apt repository
         uses: cpina/github-action-push-to-another-repository@main
         env:
