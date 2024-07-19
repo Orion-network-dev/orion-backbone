@@ -21,19 +21,19 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: mkdir -p /output-apt-repo/orion-backbone/
+      - run: mkdir -p /tmp/output-apt-repo/orion-backbone/
       # Download the current apt repository
       - uses: actions/checkout@v4
         with:
           repository: Orion-network-dev/apt-registry
-          path: /output-apt-repo
+          path: /tmp/output-apt-repo/orion-backbone/
       - run: cp dist/orion*.deb output-apt-repo/orion-backbone/
       - name: Pushes to the apt repository
         uses: cpina/github-action-push-to-another-repository@main
         env:
           API_TOKEN_GITHUB: ${{ secrets.API_APT_GITHUB }}
         with:
-          source-directory: '/output-apt-repo'
+          source-directory: '/tmp/output-apt-repo/orion-backbone'
           destination-github-username: 'Orion-network-dev'
           destination-repository-name: 'apt-registry'
           user-email: 'orion+backbone@mpgn.dev'
