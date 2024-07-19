@@ -20,7 +20,7 @@ import (
 var (
 	debug          = flag.Bool("debug", false, "change the log level to debug")
 	registryServer = flag.String("registry-server", "reg.orionet.re", "the address of the registry server")
-	registryPort   = flag.Uint("registry-port", 443, "the port used by the registry")
+	registryPort   = flag.Uint("registry-port", 6443, "the port used by the registry")
 )
 
 func main() {
