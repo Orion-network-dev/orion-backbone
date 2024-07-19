@@ -71,5 +71,13 @@ func main() {
 	// Wait for exit signal
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	<-sigs
+
+	select {
+	case <-sigs:
+		return
+	case <-ctx.Done():
+		return
+	case <-orionDaemon.Context.Done():
+		return
+	}
 }

@@ -40,7 +40,8 @@ type OrionClientDaemon struct {
 	registryStream     proto.Registry_SubscribeToStreamClient
 
 	// Runtime information
-	ctx context.Context
+	Context   context.Context
+	ctxCancel context.CancelFunc
 }
 
 // Creates and initializes a new Orion client
@@ -48,12 +49,14 @@ func NewOrionClientDaemon(
 	Context context.Context,
 	ClientConnection *grpc.ClientConn,
 ) (*OrionClientDaemon, error) {
+	ctx, cancel := context.WithCancel(Context)
 	orionClient := OrionClientDaemon{
 		registryClient:     proto.NewRegistryClient(ClientConnection),
 		holePunchingClient: proto.NewHolePunchingServiceClient(ClientConnection),
 		friendlyName:       *friendlyName,
 		wireguardTunnels:   make(map[uint32]*internal.WireguardInterface),
-		ctx:                Context,
+		Context:            ctx,
+		ctxCancel:          cancel,
 	}
 
 	wgClient, err := wgctrl.New()

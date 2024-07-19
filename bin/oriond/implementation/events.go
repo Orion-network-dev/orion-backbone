@@ -2,10 +2,11 @@ package implementation
 
 import (
 	"github.com/MatthieuCoder/OrionV3/internal/proto"
+	"github.com/rs/zerolog/log"
 )
 
 func (c *OrionClientDaemon) initializeStream() error {
-	ctx := c.ctx
+	ctx := c.Context
 
 	stream, err := c.registryClient.SubscribeToStream(ctx)
 	if err != nil {
@@ -16,6 +17,11 @@ func (c *OrionClientDaemon) initializeStream() error {
 }
 
 func (c *OrionClientDaemon) listener() error {
+	defer func() {
+		log.Info().Msg("listener is finished")
+		c.ctxCancel()
+	}()
+
 	for {
 		event, err := c.registryStream.Recv()
 		if err != nil {
