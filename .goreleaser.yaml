@@ -50,6 +50,9 @@ nfpms:
       - frr
     bindir: /usr/bin
 
+    scripts:
+      postinstall: ./packaging/postinstall.sh
+
     # Version Release.
     release: 1
 

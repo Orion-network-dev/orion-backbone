@@ -21,12 +21,12 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: mkdir -p output-apt-repo/orion-backbone/
       # Download the current apt repository
       - uses: actions/checkout@v4
         with:
           repository: Orion-network-dev/apt-registry
           path: output-apt-repo/
+      - run: mkdir -p output-apt-repo/orion-backbone/
       - run: cp dist/orion*.deb output-apt-repo/orion-backbone/
       - run: rm -rf output-apt-repo/.git
       - name: Pushes to the apt repository
