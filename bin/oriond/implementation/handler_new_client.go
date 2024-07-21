@@ -76,7 +76,7 @@ func (c *OrionClientDaemon) handleNewClient(
 		return
 	}
 	go func() {
-		waitingForResponse, cancel := context.WithTimeout(ctx, time.Minute)
+		waitingForResponse, cancel := context.WithTimeout(c.Context, time.Minute)
 		defer cancel()
 		establshed_stream := c.establishedStream.Listener(10).Ch()
 		for {
