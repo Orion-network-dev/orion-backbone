@@ -75,25 +75,26 @@ func (c *OrionClientDaemon) handleNewClient(
 		peer.Dispose()
 		return
 	}
-
-	waitingForResponse, cancel := context.WithTimeout(ctx, time.Minute)
-	defer cancel()
-	establshed_stream := c.establishedStream.Listener(10).Ch()
-	for {
-		select {
-		case establishedStreamID := <-establshed_stream:
-			// Our connection got succesfullt established
-			if establishedStreamID == event.PeerId {
+	go func() {
+		waitingForResponse, cancel := context.WithTimeout(ctx, time.Minute)
+		defer cancel()
+		establshed_stream := c.establishedStream.Listener(10).Ch()
+		for {
+			select {
+			case establishedStreamID := <-establshed_stream:
+				// Our connection got succesfullt established
+				if establishedStreamID == event.PeerId {
+					return
+				}
+			case <-waitingForResponse.Done():
+				// timeout reached while establishing the peer connection
+				log.Error().
+					Err(waitingForResponse.Err()).
+					Uint32("peer-id", event.PeerId).
+					Msgf("timeout exceeded while waiting for a response from the peer")
+				peer.Dispose()
 				return
 			}
-		case <-waitingForResponse.Done():
-			// timeout reached while establishing the peer connection
-			log.Error().
-				Err(waitingForResponse.Err()).
-				Uint32("peer-id", event.PeerId).
-				Msgf("timeout exceeded while waiting for a response from the peer")
-			peer.Dispose()
-			return
 		}
-	}
+	}()
 }
