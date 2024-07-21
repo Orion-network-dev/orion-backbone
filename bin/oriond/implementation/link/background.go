@@ -33,6 +33,8 @@ func (c *PeerLink) updateWeights() error {
 		Address: c.otherIP.IP.String(),
 		Weight:  weight,
 	}
+	c.frrManager.Update()
+
 	return nil
 }
 
