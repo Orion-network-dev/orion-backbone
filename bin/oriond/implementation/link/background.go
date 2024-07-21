@@ -25,8 +25,9 @@ func (c *PeerLink) updateWeights() error {
 		return err
 	}
 	stats := pinger.Statistics() // get send/receive/duplicate/rtt stats
+
 	latency := stats.AvgRtt
-	if stats.PacketsRecv == stats.PacketsSent {
+	if stats.PacketLoss > 0 {
 		log.Debug().Msg("ping failed")
 		latency = time.Hour * 24 * 7
 	}
