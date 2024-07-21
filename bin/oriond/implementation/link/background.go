@@ -4,8 +4,8 @@ import (
 	"math"
 	"time"
 
-	"github.com/MatthieuCoder/OrionV3/bin/oriond/implementation/frr"
 	"github.com/go-ping/ping"
+	"github.com/rs/zerolog/log"
 )
 
 func (c *PeerLink) updateWeights() error {
@@ -13,6 +13,8 @@ func (c *PeerLink) updateWeights() error {
 	if err != nil {
 		return err
 	}
+	pinger.SetPrivileged(true)
+
 	// Ping one time
 	pinger.Count = 1
 	err = pinger.Run() // Blocks until finished.
@@ -27,13 +29,11 @@ func (c *PeerLink) updateWeights() error {
 	}
 
 	// f\left(x\right)=-e^{\ \left(\frac{x}{15}\right)}+50
-	weight := uint32(math.Min(math.Exp(float64(latency.Milliseconds()/15))+50, 0))
-	c.frrManager.Peers[c.otherID] = &frr.Peer{
-		ASN:     c.otherID + 64511,
-		Address: c.otherIP.IP.String(),
-		Weight:  weight,
+	c.frrManager.Peers[c.otherID].Weight = uint32(math.Min(math.Exp(float64(latency.Milliseconds()/15))+50, 0))
+	err = c.frrManager.Update()
+	if err != nil {
+		return err
 	}
-	c.frrManager.Update()
 
 	return nil
 }
@@ -45,9 +45,18 @@ func (c *PeerLink) backgroundTask() {
 	for {
 		select {
 		case <-timer.C:
-			c.updateWeights()
+			if err := c.updateWeights(); err != nil {
+				log.Error().
+					Err(err).
+					Uint32("peer-id", c.otherID).
+					Msgf("failed to adjust the weight")
+			}
 
 		case <-c.ctx.Done():
+			log.Error().
+				Err(c.ctx.Err()).
+				Uint32("peer-id", c.otherID).
+				Msgf("ending the background task")
 			return
 		}
 	}
