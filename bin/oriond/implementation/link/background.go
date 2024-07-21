@@ -17,6 +17,8 @@ func (c *PeerLink) updateWeights() error {
 
 	// Ping one time
 	pinger.Count = 1
+	pinger.Timeout = time.Second * 5
+
 	err = pinger.Run() // Blocks until finished.
 	if err != nil {
 		return err
@@ -28,8 +30,18 @@ func (c *PeerLink) updateWeights() error {
 		return nil
 	}
 
-	// f\left(x\right)=-e^{\ \left(\frac{x}{15}\right)}+50
-	c.frrManager.Peers[c.otherID].Weight = uint32(math.Min(math.Exp(float64(latency.Milliseconds()/15))+50, 0))
+	log.Debug().Msg("ping(ed) peer succesfully")
+	// f\left(x\right)=\min\left(\max\left(e^{\ \left(\frac{500-x}{80}\right)},0\right),300\right)
+	c.frrManager.Peers[c.otherID].Weight = uint32(math.Min(
+		300,
+		math.Max(
+			math.Exp(
+				(500-float64(latency.Milliseconds()))/80,
+			),
+			0,
+		),
+	))
+
 	err = c.frrManager.Update()
 	if err != nil {
 		return err
