@@ -9,6 +9,7 @@ import (
 )
 
 func (c *PeerLink) updateWeights() error {
+	log.Debug().Msg("starting to ping")
 	pinger, err := ping.NewPinger(c.otherIP.IP.String())
 	if err != nil {
 		return err
@@ -26,10 +27,11 @@ func (c *PeerLink) updateWeights() error {
 	stats := pinger.Statistics() // get send/receive/duplicate/rtt stats
 	latency := stats.AvgRtt
 	if stats.PacketsRecv == stats.PacketsSent {
+		log.Debug().Msg("ping failed")
 		latency = time.Hour * 24 * 7
 	}
 
-	log.Debug().Msg("ping(ed) peer succesfully")
+	log.Debug().Dur("ping-reponse", latency).Msg("ping(ed) peer")
 	// f\left(x\right)=\min\left(\max\left(e^{\ \left(\frac{500-x}{80}\right)},0\right),300\right)
 	c.frrManager.Peers[c.otherID].Weight = uint32(math.Min(
 		300,
