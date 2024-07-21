@@ -35,4 +35,7 @@ func (c *OrionClientDaemon) handleWantsToConnectResponse(event *proto.ClientWant
 			Msg("failed to initiate a connection to the peer after a connect initialization response")
 		peerLink.Dispose()
 	}
+
+	// Ends the waiting stream in the new_client handler
+	c.establishedStream <- event.SourcePeerId
 }

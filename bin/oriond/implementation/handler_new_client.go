@@ -73,5 +73,27 @@ func (c *OrionClientDaemon) handleNewClient(
 			Uint32("peer-id", event.PeerId).
 			Msgf("couldn't write the initialization message to the gRPC connection")
 		peer.Dispose()
+		return
+	}
+
+	waitingForResponse, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+
+	for {
+		select {
+		case establishedStreamID := <-c.establishedStream:
+			// Our connection got succesfullt established
+			if establishedStreamID == event.PeerId {
+				return
+			}
+		case <-waitingForResponse.Done():
+			// timeout reached while establishing the peer connection
+			log.Error().
+				Err(waitingForResponse.Err()).
+				Uint32("peer-id", event.PeerId).
+				Msgf("timeout exceeded while waiting for a response from the peer")
+			peer.Dispose()
+			return
+		}
 	}
 }

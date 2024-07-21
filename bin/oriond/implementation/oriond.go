@@ -34,8 +34,9 @@ type OrionClientDaemon struct {
 	tunnels map[uint32]*link.PeerLink
 
 	// Runtime information
-	Context   context.Context
-	ctxCancel context.CancelFunc
+	Context           context.Context
+	ctxCancel         context.CancelFunc
+	establishedStream chan uint32
 }
 
 // Creates and initializes a new Orion client
@@ -50,6 +51,7 @@ func NewOrionClientDaemon(
 		friendlyName:       *friendlyName,
 		Context:            ctx,
 		ctxCancel:          cancel,
+		establishedStream:  make(chan uint32),
 	}
 
 	wgClient, err := wgctrl.New()
