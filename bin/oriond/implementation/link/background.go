@@ -27,7 +27,6 @@ func (c *PeerLink) updateWeights() error {
 	latency := stats.AvgRtt
 	if stats.PacketsRecv == stats.PacketsSent {
 		latency = time.Hour * 24 * 7
-		return nil
 	}
 
 	log.Debug().Msg("ping(ed) peer succesfully")
