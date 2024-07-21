@@ -8,6 +8,7 @@ import (
 	"github.com/MatthieuCoder/OrionV3/bin/oriond/implementation/link"
 	"github.com/MatthieuCoder/OrionV3/internal/proto"
 	"github.com/rs/zerolog/log"
+	"github.com/teivah/broadcast"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"google.golang.org/grpc"
 )
@@ -36,7 +37,7 @@ type OrionClientDaemon struct {
 	// Runtime information
 	Context           context.Context
 	ctxCancel         context.CancelFunc
-	establishedStream chan uint32
+	establishedStream *broadcast.Relay[uint32]
 }
 
 // Creates and initializes a new Orion client
@@ -51,7 +52,7 @@ func NewOrionClientDaemon(
 		friendlyName:       *friendlyName,
 		Context:            ctx,
 		ctxCancel:          cancel,
-		establishedStream:  make(chan uint32),
+		establishedStream:  broadcast.NewRelay[uint32](),
 	}
 
 	wgClient, err := wgctrl.New()
