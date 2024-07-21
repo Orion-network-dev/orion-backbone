@@ -63,7 +63,10 @@ func (c *PeerLink) InitializePeerConnection(
 	}
 
 	// We launch our monitoring task
-	go c.backgroundTask()
+	go func() {
+		time.Sleep(time.Second * 5)
+		go c.backgroundTask()
+	}()
 
 	return nil
 }

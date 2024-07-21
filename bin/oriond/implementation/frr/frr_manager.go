@@ -26,6 +26,7 @@ type group struct {
 type Peer struct {
 	Address string
 	ASN     uint32
+	Weight  uint32
 }
 
 // Contest representing th entire state of the frr config file.

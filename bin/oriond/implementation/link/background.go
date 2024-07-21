@@ -1,16 +1,38 @@
 package link
 
 import (
+	"math"
 	"time"
 
-	"github.com/rs/zerolog/log"
+	"github.com/MatthieuCoder/OrionV3/bin/oriond/implementation/frr"
+	"github.com/go-ping/ping"
 )
 
 func (c *PeerLink) updateWeights() error {
-	// todo: do an icmp ping and ajust the bgp weights related to it
-	// latency := 0
-	log.Debug().Msg("updating weights (un-implemented)")
+	pinger, err := ping.NewPinger(c.otherIP.IP.String())
+	if err != nil {
+		return err
+	}
+	// Ping one time
+	pinger.Count = 1
+	err = pinger.Run() // Blocks until finished.
+	if err != nil {
+		return err
+	}
+	stats := pinger.Statistics() // get send/receive/duplicate/rtt stats
+	latency := stats.AvgRtt
+	if stats.PacketsRecv == stats.PacketsSent {
+		latency = time.Hour * 24 * 7
+		return nil
+	}
 
+	// f\left(x\right)=-e^{\ \left(\frac{x}{15}\right)}+50
+	weight := uint32(math.Min(math.Exp(float64(latency.Milliseconds()/15))+50, 0))
+	c.frrManager.Peers[c.otherID] = &frr.Peer{
+		ASN:     c.otherID + 64511,
+		Address: c.otherIP.IP.String(),
+		Weight:  weight,
+	}
 	return nil
 }
 

@@ -12,6 +12,7 @@ router bgp {{ .ASN }}
 {{- end -}}
 {{- range .Peers }}
  neighbor {{ .Address }} peer-group orion{{ .ASN }}
+ neighbor {{ .Address }} weight {{ .Weight }}
 {{- end }}
  !
  address-family ipv4 unicast
