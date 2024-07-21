@@ -6,17 +6,15 @@ import (
 )
 
 func (c *OrionClientDaemon) handleRemovedClient(event *proto.ClientDisconnectedTeardownEvent) {
-	wg := c.wireguardTunnels[event.PeerId]
+	peer := c.tunnels[event.PeerId]
 
-	// If we had a wireguard tunnel to this peer, we shall delete it
-	if wg != nil {
-		wg.Dispose()
+	if peer == nil {
+		log.Error().
+			Uint32("peer-id", event.PeerId).
+			Msgf("received a removed client event, but no such tunnel initialized")
+		return
 	}
-
-	if peer := c.frrManager.Peers[event.PeerId]; peer != nil {
-		c.frrManager.Peers[event.PeerId] = nil
-		if err := c.frrManager.Update(); err != nil {
-			log.Error().Err(err).Msg("failed to apply frr configuration changes")
-		}
-	}
+	// Since every ressource link to a peer is linked to a PeerLink
+	// we simply have to dispose the peer to remove all resources
+	peer.Dispose()
 }

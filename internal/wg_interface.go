@@ -69,11 +69,13 @@ func (c *WireguardInterface) Dispose() {
 	}
 }
 
-func (c *WireguardInterface) SetAddress(ip *net.IPNet) {
+func (c *WireguardInterface) SetAddress(ip *net.IPNet) error {
 	log.Debug().Str("interface", c.WgLink.InterfaceAttrs.Name).Msg("updating the IP address")
 	if err := netlink.AddrAdd(c.WgLink, &netlink.Addr{
 		IPNet: ip,
 	}); err != nil {
 		log.Error().Err(err).Msg("failed to assign IP addresses")
+		return err
 	}
+	return nil
 }

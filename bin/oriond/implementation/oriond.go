@@ -3,10 +3,9 @@ package implementation
 import (
 	"context"
 	"flag"
-	"net"
-	"time"
 
-	"github.com/MatthieuCoder/OrionV3/internal"
+	"github.com/MatthieuCoder/OrionV3/bin/oriond/implementation/frr"
+	"github.com/MatthieuCoder/OrionV3/bin/oriond/implementation/link"
 	"github.com/MatthieuCoder/OrionV3/internal/proto"
 	"github.com/rs/zerolog/log"
 	"golang.zx2c4.com/wireguard/wgctrl"
@@ -15,12 +14,6 @@ import (
 
 var (
 	friendlyName = flag.String("friendly-name", "Standard OrionD Instance", "The name of the software connecting to Orion")
-	keepAlive    = flag.Duration("wireguard-keepalive", time.Second*60, "")
-
-	allIPRanges = net.IPNet{
-		IP:   net.IPv4(0, 0, 0, 0),
-		Mask: net.CIDRMask(0, 32),
-	}
 )
 
 type OrionClientDaemon struct {
@@ -30,14 +23,15 @@ type OrionClientDaemon struct {
 	asn          uint32
 
 	// Structs used to manage the state of OrionD
-	frrManager       *FrrConfigManager
-	wireguardTunnels map[uint32]*internal.WireguardInterface
-	wgClient         *wgctrl.Client
+	frrManager *frr.FrrConfigManager
+	wgClient   *wgctrl.Client
 
 	// GRPC Clients
 	registryClient     proto.RegistryClient
 	holePunchingClient proto.HolePunchingServiceClient
 	registryStream     proto.Registry_SubscribeToStreamClient
+
+	tunnels map[uint32]*link.PeerLink
 
 	// Runtime information
 	Context   context.Context
@@ -54,7 +48,6 @@ func NewOrionClientDaemon(
 		registryClient:     proto.NewRegistryClient(ClientConnection),
 		holePunchingClient: proto.NewHolePunchingServiceClient(ClientConnection),
 		friendlyName:       *friendlyName,
-		wireguardTunnels:   make(map[uint32]*internal.WireguardInterface),
 		Context:            ctx,
 		ctxCancel:          cancel,
 	}
@@ -72,7 +65,7 @@ func NewOrionClientDaemon(
 	}
 
 	// Initializing the FRR config manager, which is used to change the bgp configuration
-	if frrManager, err := NewFrrConfigManager(orionClient.asn, orionClient.memberId); err == nil {
+	if frrManager, err := frr.NewFrrConfigManager(orionClient.asn, orionClient.memberId); err == nil {
 		orionClient.frrManager = frrManager
 	} else {
 		return nil, err
@@ -96,14 +89,14 @@ func NewOrionClientDaemon(
 
 // Disposing interfaces and frr peers
 func (c *OrionClientDaemon) Dispose() {
-	log.Info().Msg("Disposing the wireguard tunnels")
-	for _, tunnel := range c.wireguardTunnels {
-		tunnel.Dispose()
-	}
-	log.Info().Msg("Disposing the bgp sessions")
-	c.frrManager.Peers = make(map[uint32]*Peer)
-	err := c.frrManager.Update()
-	if err != nil {
-		log.Error().Err(err).Msg("failed to dispose the bgp sessions")
+	log.Info().Msg("Disposing all the client")
+	for _, tunnel := range c.tunnels {
+		err := tunnel.Dispose()
+		if err != nil {
+			log.Error().
+				Err(err).
+				Uint32("peer-id", tunnel.RemoteID()).
+				Msg("failed to dispose the client")
+		}
 	}
 }

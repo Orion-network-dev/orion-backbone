@@ -2,53 +2,64 @@ package implementation
 
 import (
 	"context"
-	"fmt"
+	"time"
 
-	"github.com/MatthieuCoder/OrionV3/internal"
+	"github.com/MatthieuCoder/OrionV3/bin/oriond/implementation/link"
 	"github.com/MatthieuCoder/OrionV3/internal/proto"
 	"github.com/rs/zerolog/log"
-	"github.com/vishvananda/netlink"
-	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-func (c *OrionClientDaemon) handleNewClient(event *proto.ClientNewOnNetworkEvent) {
-	log.Debug().Msg("got new client message, trying to initialize a p2p connection")
-
-	privatekey, err := wgtypes.GeneratePrivateKey()
-	if err != nil {
-		log.Error().Err(err).Msg("failure to generate a wireguard private key")
-		return
-	}
-	publickey := privatekey.PublicKey()
-
-	tunnel, err := internal.NewWireguardInterface(c.wgClient, &netlink.LinkAttrs{
-		Name:  fmt.Sprintf("orion%d", event.PeerId),
-		Group: 30,
-	}, wgtypes.Config{
-		PrivateKey:   &privatekey,
-		ReplacePeers: true,
-		Peers:        []wgtypes.PeerConfig{},
-	})
-	if err != nil {
-		log.Error().Err(err).Msg("cannot make wireguard interface")
-		return
-	}
-	c.wireguardTunnels[event.PeerId] = tunnel
-
-	ctx := context.Background()
-	holepunch, err := holePunchTunnel(ctx, c.wgClient, tunnel, c.holePunchingClient)
-	if err != nil {
-		log.Error().Err(err).Msg("cannot hole punch interface")
-		tunnel.Dispose()
+func (c *OrionClientDaemon) handleNewClient(
+	ctx context.Context,
+	event *proto.ClientNewOnNetworkEvent,
+) {
+	if c.tunnels[event.PeerId] != nil {
+		log.Error().
+			Uint32("peer-id", event.PeerId).
+			Msg("received a new_client event for a already-initialized event")
 		return
 	}
 
-	// Ask a new connection by emitting a client event
+	peer, err := link.NewPeerLink(
+		c.Context,
+		c.memberId,
+		event.PeerId,
+		c.wgClient,
+		c.frrManager,
+	)
+	if err != nil {
+		log.Error().
+			Err(err).
+			Uint32("peer-id", event.PeerId).
+			Msgf("failed to initialize the peer object")
+		return
+	}
+	// We save the peer in the tunnels map
+	c.tunnels[event.PeerId] = peer
+	publickey := peer.PublicKey()
+
+	// We initialize a one minte context for getting the hole-punching details
+	holePunchingContext, cancel := context.WithTimeout(ctx, time.Minute)
+	holePunching, err := peer.HolePunchTunnel(
+		holePunchingContext,
+		c.holePunchingClient,
+	)
+	cancel()
+	if err != nil {
+		log.Error().
+			Err(err).
+			Uint32("peer-id", event.PeerId).
+			Msg("failed to hole-punch the interface")
+		peer.Dispose()
+		return
+	}
+
+	// Inform the peer that we re ready for connection
 	err = c.registryStream.Send(&proto.RPCClientEvent{
 		Event: &proto.RPCClientEvent_Connect{
 			Connect: &proto.ClientWantToConnectToClient{
-				EndpointAddr:      holepunch.ClientEndpointAddr,
-				EndpointPort:      holepunch.ClientEndpointPort,
+				EndpointAddr:      holePunching.ClientEndpointAddr,
+				EndpointPort:      holePunching.ClientEndpointPort,
 				PublicKey:         publickey[:],
 				FriendlyName:      *friendlyName,
 				DestinationPeerId: event.PeerId,
@@ -57,7 +68,10 @@ func (c *OrionClientDaemon) handleNewClient(event *proto.ClientNewOnNetworkEvent
 		},
 	})
 	if err != nil {
-		log.Error().Err(err).Msgf("couldn't swrite the initialization message to the gRPC connection")
+		log.Error().
+			Err(err).
+			Uint32("peer-id", event.PeerId).
+			Msgf("couldn't write the initialization message to the gRPC connection")
+		peer.Dispose()
 	}
-
 }

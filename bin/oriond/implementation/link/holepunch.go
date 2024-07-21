@@ -1,4 +1,4 @@
-package implementation
+package link
 
 import (
 	"context"
@@ -7,10 +7,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/MatthieuCoder/OrionV3/internal"
 	"github.com/MatthieuCoder/OrionV3/internal/proto"
 	"github.com/rs/zerolog/log"
-	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
@@ -18,9 +16,12 @@ var (
 	holePunchOverrideAddress = flag.String("override-hole-punch-address", "", "Override the public port for this instance")
 )
 
-func holePunchTunnel(parentCtx context.Context, wgCtl *wgctrl.Client, wg *internal.WireguardInterface, holepunchClient proto.HolePunchingServiceClient) (*proto.HolePunchingCompleteResponse, error) {
+func (c *PeerLink) HolePunchTunnel(
+	parentCtx context.Context,
+	holepunchClient proto.HolePunchingServiceClient,
+) (*proto.HolePunchingCompleteResponse, error) {
 	ctx := context.WithoutCancel(parentCtx)
-	device, err := wgCtl.Device(wg.WgLink.InterfaceAttrs.Name)
+	device, err := c.wgClient.Device(c.wireguardTunnel.WgLink.InterfaceAttrs.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +54,7 @@ func holePunchTunnel(parentCtx context.Context, wgCtl *wgctrl.Client, wg *intern
 			return nil, fmt.Errorf("invalid server name")
 		}
 		log.Debug().IPAddr("server", ips[0]).Uint32("port", initializationResponse.EndpointPort).Msg("connecting to the server")
-		err = wgCtl.ConfigureDevice(wg.WgLink.InterfaceAttrs.Name, wgtypes.Config{
+		err = c.wgClient.ConfigureDevice(c.wireguardTunnel.WgLink.InterfaceAttrs.Name, wgtypes.Config{
 			ReplacePeers: true,
 			Peers: []wgtypes.PeerConfig{
 				{
