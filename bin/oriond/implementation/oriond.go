@@ -53,6 +53,7 @@ func NewOrionClientDaemon(
 		Context:            ctx,
 		ctxCancel:          cancel,
 		establishedStream:  broadcast.NewRelay[uint32](),
+		tunnels:            make(map[uint32]*link.PeerLink),
 	}
 
 	wgClient, err := wgctrl.New()
