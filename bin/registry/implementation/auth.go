@@ -51,9 +51,16 @@ func Authenticate(
 		DNSName:       identifier,
 		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 	}); err != nil {
-		log.Debug().Err(err).Msg("certificate is not valid for wanted domains")
-		return fmt.Errorf(err.Error())
+		err := fmt.Errorf("this certificate is not valid for oriond")
+		log.Debug().Err(err).Msg("user supplied an orion-invalid certificate")
+		return err
 	}
+
+	if cert.Subject.CommonName != fmt.Sprintf("%s:oriond", identifier) {
+		log.Error().Err(err).Msg("failed to parse the intermediary certificates")
+		return err
+	}
+
 	// Calculate the hash given in order to check the client signature
 	nonce := internal.CalculateNonceBytes(MemberId, FriendlyName, TimeStamp)
 
