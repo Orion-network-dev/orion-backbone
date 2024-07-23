@@ -12,6 +12,8 @@ UMask=007
 EnvironmentFile=/etc/default/orion-registry
 ExecStart=/usr/bin/orion-registry $TERM
 
+StartLimitIntervalSec=0
+RestartSec=3
 Restart=on-failure
 TimeoutStopSec=300
  
