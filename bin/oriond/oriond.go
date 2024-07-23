@@ -74,10 +74,7 @@ func main() {
 
 	select {
 	case <-sigs:
-		return
 	case <-ctx.Done():
-		return
 	case <-orionDaemon.Context.Done():
-		return
 	}
 }

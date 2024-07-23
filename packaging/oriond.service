@@ -14,7 +14,7 @@ ExecStart=/usr/bin/oriond $TERM
 
 StartLimitIntervalSec=0
 RestartSec=3
-Restart=on-failure
+Restart=always
 TimeoutStopSec=300
  
 [Install]
