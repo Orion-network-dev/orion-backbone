@@ -22,6 +22,12 @@ func (c *OrionClientDaemon) handleWantsToConnect(
 			Msg("received a message not destinated to this host")
 		return
 	}
+	if c.tunnels[event.SourcePeerId] != nil {
+		log.Error().
+			Uint32("peer-id", event.SourcePeerId).
+			Msg("received a want to connect event for a already-initialized event")
+		return
+	}
 
 	// It's our job to generate the pre-shared key information
 	// according the the protocol.

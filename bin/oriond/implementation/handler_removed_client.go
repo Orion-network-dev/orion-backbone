@@ -17,5 +17,5 @@ func (c *OrionClientDaemon) handleRemovedClient(event *proto.ClientDisconnectedT
 	// Since every ressource link to a peer is linked to a PeerLink
 	// we simply have to dispose the peer to remove all resources
 	peer.Dispose()
-	peer = nil
+	c.tunnels[event.PeerId] = nil
 }
