@@ -12,7 +12,6 @@ UMask=007
 EnvironmentFile=/etc/default/oriond
 ExecStart=/usr/bin/oriond $TERM
 
-StartLimitIntervalSec=0
 RestartSec=3
 Restart=always
 TimeoutStopSec=300
