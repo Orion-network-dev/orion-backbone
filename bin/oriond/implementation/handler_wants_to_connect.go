@@ -50,6 +50,7 @@ func (c *OrionClientDaemon) handleWantsToConnect(
 		return
 	}
 	publicKey := peer.PublicKey()
+	c.tunnels[event.SourcePeerId] = peer
 
 	// We initialize a one minte context for getting the hole-punching details
 	holePunchingContext, cancel := context.WithTimeout(ctx, time.Minute)
