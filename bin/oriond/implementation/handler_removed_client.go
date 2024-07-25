@@ -6,6 +6,9 @@ import (
 )
 
 func (c *OrionClientDaemon) handleRemovedClient(event *proto.ClientDisconnectedTeardownEvent) {
+	c.tunnelsLock.Lock()
+	defer c.tunnelsLock.Unlock()
+
 	peer := c.tunnels[event.PeerId]
 
 	if peer == nil {

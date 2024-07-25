@@ -1,6 +1,7 @@
 package link
 
 import (
+	"fmt"
 	"math"
 	"time"
 
@@ -33,8 +34,13 @@ func (c *PeerLink) updateWeights() error {
 	}
 
 	log.Debug().Dur("ping-reponse", latency).Msg("ping(ed) peer")
+	newPeer := c.frrManager.GetPeer(c.otherID)
+	if newPeer == nil {
+		return fmt.Errorf("peer is not existant")
+	}
+
 	// f\left(x\right)=\min\left(\max\left(e^{\ \left(\frac{500-x}{80}\right)},0\right),300\right)
-	c.frrManager.Peers[c.otherID].Weight = uint32(math.Min(
+	newPeer.Weight = uint32(math.Min(
 		300,
 		math.Max(
 			math.Exp(
@@ -43,6 +49,7 @@ func (c *PeerLink) updateWeights() error {
 			0,
 		),
 	))
+	c.frrManager.UpdatePeer(c.otherID, newPeer)
 
 	err = c.frrManager.Update()
 	if err != nil {

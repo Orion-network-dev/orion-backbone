@@ -13,6 +13,9 @@ func (c *OrionClientDaemon) handleNewClient(
 	ctx context.Context,
 	event *proto.ClientNewOnNetworkEvent,
 ) {
+	c.tunnelsLock.Lock()
+	defer c.tunnelsLock.Unlock()
+
 	if c.tunnels[event.PeerId] != nil {
 		log.Error().
 			Uint32("peer-id", event.PeerId).

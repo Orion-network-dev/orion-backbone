@@ -14,7 +14,7 @@ import (
 var (
 	memberIdRegex    = regexp.MustCompile(`(.*?).member.orionet.re`)
 	memberIdOverride = flag.Uint("override-member-id", 0, "An override of the memberID of this instance")
-	asn              = flag.Int("override-asn", 0, "An override of the ASN number used by this instance")
+	asn              = flag.Uint("override-asn", 0, "An override of the ASN number used by this instance")
 )
 
 func (c *OrionClientDaemon) resolveIdentity() error {

@@ -53,10 +53,11 @@ func (c *PeerLink) InitializePeerConnection(
 	}
 
 	// We register our peering to frr
-	c.frrManager.Peers[c.otherID] = &frr.Peer{
+	c.frrManager.UpdatePeer(c.otherID, &frr.Peer{
 		ASN:     c.otherID + 64511,
 		Address: c.otherIP.IP.String(),
-	}
+		Weight:  200,
+	})
 	err = c.frrManager.Update()
 	if err != nil {
 		return err

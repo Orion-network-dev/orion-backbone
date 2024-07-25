@@ -2,6 +2,7 @@ package internal
 
 import (
 	"net"
+	"sync"
 
 	"github.com/rs/zerolog/log"
 	"github.com/vishvananda/netlink"
@@ -12,6 +13,7 @@ import (
 type WireguardInterface struct {
 	WgLink   WireguardNetLink
 	wgconfig wgtypes.Config
+	lock     sync.Mutex
 }
 
 func NewWireguardInterface(wg *wgctrl.Client, interfaceAttrs *netlink.LinkAttrs, configuration wgtypes.Config) (*WireguardInterface, error) {
@@ -50,6 +52,9 @@ func NewWireguardInterface(wg *wgctrl.Client, interfaceAttrs *netlink.LinkAttrs,
 }
 
 func (c *WireguardInterface) SetPeers(wg *wgctrl.Client, peers []wgtypes.PeerConfig) error {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
 	log.Debug().Str("interface", c.WgLink.InterfaceAttrs.Name).Msg("updating peers on interface")
 	c.wgconfig.Peers = peers
 	c.wgconfig.ReplacePeers = true
@@ -63,6 +68,9 @@ func (c *WireguardInterface) SetPeers(wg *wgctrl.Client, peers []wgtypes.PeerCon
 }
 
 func (c *WireguardInterface) Dispose() {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
 	log.Debug().Str("interface", c.WgLink.InterfaceAttrs.Name).Msg("disposing wireguard interface")
 	if err := netlink.LinkDel(c.WgLink); err != nil {
 		log.Error().Err(err).Msg("failed to destroy interface")
@@ -70,6 +78,9 @@ func (c *WireguardInterface) Dispose() {
 }
 
 func (c *WireguardInterface) SetAddress(ip *net.IPNet) error {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
 	log.Debug().Str("interface", c.WgLink.InterfaceAttrs.Name).Msg("updating the IP address")
 
 	existingIPs, err := netlink.AddrList(c.WgLink, netlink.FAMILY_V4)

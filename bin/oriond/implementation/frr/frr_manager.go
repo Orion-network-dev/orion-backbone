@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"sync"
 	"text/template"
 
 	"github.com/rs/zerolog"
@@ -39,10 +40,11 @@ type tmplContext struct {
 
 // Struct used to interact and issue the FRR configuration file updates.
 type FrrConfigManager struct {
-	Peers    map[uint32]*Peer
-	selfASN  uint32
-	OrionId  uint32
-	template *template.Template
+	peers     map[uint32]*Peer
+	selfASN   uint32
+	OrionId   uint32
+	template  *template.Template
+	peersLock *sync.RWMutex
 }
 
 // Function used to load the template files.
@@ -61,7 +63,7 @@ func NewFrrConfigManager(ASN uint32, OrionId uint32) (*FrrConfigManager, error) 
 		return nil, err
 	}
 	config := &FrrConfigManager{
-		Peers:    map[uint32]*Peer{},
+		peers:    map[uint32]*Peer{},
 		selfASN:  ASN,
 		OrionId:  OrionId,
 		template: tmpl,
@@ -78,10 +80,12 @@ func NewFrrConfigManager(ASN uint32, OrionId uint32) (*FrrConfigManager, error) 
 // and renders a new configuration for the `frr` daemon used to implement
 // `bgpd` which is the BGP daemon used through the Orion network.
 func (c *FrrConfigManager) Update() error {
-	log.Debug().Msg("updating the FRR configuration")
+	log.Debug().Msg("applying a FRR configuration update")
 	peers := []Peer{}
 
-	for _, value := range c.Peers {
+	c.peersLock.RLock()
+	defer c.peersLock.RUnlock()
+	for _, value := range c.peers {
 		if value != nil {
 			peers = append(peers, *value)
 		}
@@ -149,4 +153,15 @@ func (c *FrrConfigManager) Update() error {
 	}
 
 	return nil
+}
+
+func (c *FrrConfigManager) UpdatePeer(id uint32, peer *Peer) {
+	// Locks the peer
+	c.peersLock.Lock()
+	defer c.peersLock.Unlock()
+	c.peers[id] = peer
+}
+
+func (c *FrrConfigManager) GetPeer(id uint32) *Peer {
+	return c.peers[id]
 }

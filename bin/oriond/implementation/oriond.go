@@ -3,6 +3,7 @@ package implementation
 import (
 	"context"
 	"flag"
+	"sync"
 
 	"github.com/MatthieuCoder/OrionV3/bin/oriond/implementation/frr"
 	"github.com/MatthieuCoder/OrionV3/bin/oriond/implementation/link"
@@ -32,7 +33,8 @@ type OrionClientDaemon struct {
 	holePunchingClient proto.HolePunchingServiceClient
 	registryStream     proto.Registry_SubscribeToStreamClient
 
-	tunnels map[uint32]*link.PeerLink
+	tunnels     map[uint32]*link.PeerLink
+	tunnelsLock *sync.RWMutex
 
 	// Runtime information
 	Context           context.Context
@@ -54,6 +56,7 @@ func NewOrionClientDaemon(
 		ctxCancel:          cancel,
 		establishedStream:  broadcast.NewRelay[uint32](),
 		tunnels:            make(map[uint32]*link.PeerLink),
+		tunnelsLock:        &sync.RWMutex{},
 	}
 
 	wgClient, err := wgctrl.New()

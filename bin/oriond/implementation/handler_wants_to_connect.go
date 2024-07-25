@@ -22,6 +22,8 @@ func (c *OrionClientDaemon) handleWantsToConnect(
 			Msg("received a message not destinated to this host")
 		return
 	}
+	c.tunnelsLock.Lock()
+	defer c.tunnelsLock.Unlock()
 	if c.tunnels[event.SourcePeerId] != nil {
 		log.Error().
 			Uint32("peer-id", event.SourcePeerId).
@@ -56,6 +58,7 @@ func (c *OrionClientDaemon) handleWantsToConnect(
 		return
 	}
 	publicKey := peer.PublicKey()
+
 	c.tunnels[event.SourcePeerId] = peer
 
 	// We initialize a one minte context for getting the hole-punching details

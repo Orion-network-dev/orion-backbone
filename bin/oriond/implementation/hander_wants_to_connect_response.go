@@ -9,6 +9,9 @@ import (
 )
 
 func (c *OrionClientDaemon) handleWantsToConnectResponse(event *proto.ClientWantToConnectToClientResponse) {
+	c.tunnelsLock.Lock()
+	defer c.tunnelsLock.Unlock()
+
 	// If we get a response to a initialization request, we check if we already created the tunnel
 	peerLink := c.tunnels[event.SourcePeerId]
 
