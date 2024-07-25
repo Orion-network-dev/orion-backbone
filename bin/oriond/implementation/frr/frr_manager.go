@@ -63,10 +63,11 @@ func NewFrrConfigManager(ASN uint32, OrionId uint32) (*FrrConfigManager, error) 
 		return nil, err
 	}
 	config := &FrrConfigManager{
-		peers:    map[uint32]*Peer{},
-		selfASN:  ASN,
-		OrionId:  OrionId,
-		template: tmpl,
+		peers:     map[uint32]*Peer{},
+		selfASN:   ASN,
+		OrionId:   OrionId,
+		template:  tmpl,
+		peersLock: &sync.RWMutex{},
 	}
 
 	if err = config.Update(); err != nil {
