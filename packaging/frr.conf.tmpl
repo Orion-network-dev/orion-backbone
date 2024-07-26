@@ -21,8 +21,6 @@ router bgp {{ .ASN }}
   network 192.168.255.{{ .OrionId }}/32
 {{- range .Groups }}
   neighbor orion{{ .ASN }} activate
-  neighbor orion{{ .ASN }} prefix-list orion in
-  neighbor orion{{ .ASN }} prefix-list orion out
   neighbor orion{{ .ASN }} route-map aigp{{ .ASN }} out
   neighbor orion{{ .ASN }} route-map aigp{{ .ASN }} in
 {{- end }}
@@ -32,8 +30,6 @@ router bgp {{ .ASN }}
   network 232.30.{{ .OrionId }}.0/24
 {{- range .Groups }}
   neighbor orion{{ .ASN }} activate
-  neighbor orion{{ .ASN }} prefix-list orion-multicast in
-  neighbor orion{{ .ASN }} prefix-list orion-multicast out
   neighbor orion{{ .ASN }} route-map aigp{{ .ASN }} out
   neighbor orion{{ .ASN }} route-map aigp{{ .ASN }} in
 {{- end }}
@@ -42,15 +38,16 @@ exit
 !
 {{ range .Groups -}}
 route-map aigp{{ .ASN }} permit 10
-  match peer orion{{ .ASN }}
+  match ip address prefix-list orion
   set aigp-metric {{ .Weight }}
   set local-preference {{ .Weight }}
+route-map igp{{ .ASN }} deny 20
 {{ end -}}
 !
 ip prefix-list orion seq 10 permit 172.30.0.0/15 le 31 ge 31
 ip prefix-list orion seq 11 permit 192.168.255.0/24 le 32 ge 32
 ip prefix-list orion seq 20 permit 10.30.0.0/16 le 32 ge 24
-ip prefix-list orion-multicast seq 10 permit 232.30.0.0/16 le 32 ge 24
+ip prefix-list orion seq 30 permit 232.30.0.0/16 le 32 ge 24
 !
 line vty
 !
