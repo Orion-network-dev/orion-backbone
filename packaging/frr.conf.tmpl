@@ -40,8 +40,7 @@ exit
 route-map aigp{{ .ASN }} permit 10
   match ip address prefix-list orion
   set aigp-metric {{ .Weight }}
-  set local-preference {{ .Weight }}
-route-map igp{{ .ASN }} deny 20
+route-map aigp{{ .ASN }} deny 20
 {{ end -}}
 !
 ip prefix-list orion seq 10 permit 172.30.0.0/15 le 31 ge 31
