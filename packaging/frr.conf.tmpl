@@ -4,7 +4,6 @@ ip forwarding
 !
 router bgp {{ .ASN }}
  no bgp network import-check
- bgp bestpath aigp
  bgp router-id 192.168.255.{{ .OrionId }}
 {{ range .Groups }}
  neighbor orion{{ .ASN }} peer-group
@@ -12,7 +11,6 @@ router bgp {{ .ASN }}
 {{- end -}}
 {{- range .Peers }}
  neighbor {{ .Address }} peer-group orion{{ .ASN }}
- neighbor {{ .Address }} aigp
 {{- end }}
  !
  address-family ipv4 unicast
@@ -20,8 +18,8 @@ router bgp {{ .ASN }}
   network 192.168.255.{{ .OrionId }}/32
 {{- range .Groups }}
   neighbor orion{{ .ASN }} activate
-  neighbor orion{{ .ASN }} route-map aigp{{ .ASN }} out
-  neighbor orion{{ .ASN }} route-map aigp{{ .ASN }} in
+  neighbor orion{{ .ASN }} route-map orion{{ .ASN }} out
+  neighbor orion{{ .ASN }} route-map orion{{ .ASN }} in
 {{- end }}
  exit-address-family
  !
@@ -29,17 +27,16 @@ router bgp {{ .ASN }}
   network 232.30.{{ .OrionId }}.0/24
 {{- range .Groups }}
   neighbor orion{{ .ASN }} activate
-  neighbor orion{{ .ASN }} route-map aigp{{ .ASN }} out
-  neighbor orion{{ .ASN }} route-map aigp{{ .ASN }} in
+  neighbor orion{{ .ASN }} route-map orion{{ .ASN }} out
+  neighbor orion{{ .ASN }} route-map orion{{ .ASN }} in
 {{- end }}
  exit-address-family
 exit
 !
 {{ range .Groups -}}
-route-map aigp{{ .ASN }} permit 10
+route-map orion{{ .ASN }} permit 10
   match ip address prefix-list orion
-  set aigp-metric {{ .Weight }}
-route-map aigp{{ .ASN }} deny 30
+route-map orion{{ .ASN }} deny 30
 {{ end -}}
 !
 ip prefix-list orion seq 10 permit 172.30.0.0/15 le 31 ge 31
