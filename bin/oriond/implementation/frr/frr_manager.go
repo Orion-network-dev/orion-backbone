@@ -19,7 +19,9 @@ var (
 
 // Struct containing the information regarding someone ASN on the network.
 type group struct {
-	ASN uint32
+	ASN       uint32
+	Weight    uint32
+	peerCount uint32
 }
 
 // Struct containing a peer in the orion network, this is typically
@@ -106,7 +108,8 @@ func (c *FrrConfigManager) Update() error {
 		if peer.ASN != 0 {
 			log.Debug().Uint32("asn", peer.ASN).Msg("new group computed")
 			context.Groups = append(context.Groups, group{
-				ASN: peer.ASN,
+				ASN:    peer.ASN,
+				Weight: peer.Weight,
 			})
 		}
 	}
