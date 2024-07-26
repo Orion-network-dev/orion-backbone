@@ -23,8 +23,8 @@ router bgp {{ .ASN }}
   neighbor orion{{ .ASN }} activate
   neighbor orion{{ .ASN }} prefix-list orion in
   neighbor orion{{ .ASN }} prefix-list orion out
-  neighbor orion{{ .ASN }} route-map set-nexthop out
-  neighbor orion{{ .ASN }} route-map set-nexthop in
+  neighbor orion{{ .ASN }} route-map aigp{{ .ASN }} out
+  neighbor orion{{ .ASN }} route-map aigp{{ .ASN }} in
 {{- end }}
  exit-address-family
  !
@@ -34,6 +34,8 @@ router bgp {{ .ASN }}
   neighbor orion{{ .ASN }} activate
   neighbor orion{{ .ASN }} prefix-list orion-multicast in
   neighbor orion{{ .ASN }} prefix-list orion-multicast out
+  neighbor orion{{ .ASN }} route-map aigp{{ .ASN }} out
+  neighbor orion{{ .ASN }} route-map aigp{{ .ASN }} in
 {{- end }}
  exit-address-family
 exit
