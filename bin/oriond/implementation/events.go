@@ -36,14 +36,14 @@ func (c *OrionClientDaemon) listener() error {
 
 		subCtx, cancel := context.WithTimeout(c.Context, time.Second*10)
 		switch event.Event.(type) {
-		case *proto.RPCServerEvent_NewClient:
-			c.handleNewClient(subCtx, event.Event.(*proto.RPCServerEvent_NewClient).NewClient)
-		case *proto.RPCServerEvent_WantsToConnect:
-			c.handleWantsToConnect(subCtx, event.Event.(*proto.RPCServerEvent_WantsToConnect).WantsToConnect)
-		case *proto.RPCServerEvent_RemovedClient:
-			c.handleRemovedClient(event.Event.(*proto.RPCServerEvent_RemovedClient).RemovedClient)
-		case *proto.RPCServerEvent_WantsToConnectResponse:
-			c.handleWantsToConnectResponse(event.Event.(*proto.RPCServerEvent_WantsToConnectResponse).WantsToConnectResponse)
+		case *proto.RPCServerEvent_NewMember:
+			c.handleNewClient(subCtx, event.Event.(*proto.RPCServerEvent_NewMember).NewMember)
+		case *proto.RPCServerEvent_MemberConnect:
+			c.handleWantsToConnect(subCtx, event.Event.(*proto.RPCServerEvent_MemberConnect).MemberConnect)
+		case *proto.RPCServerEvent_DisconnectedMember:
+			c.handleRemovedClient(event.Event.(*proto.RPCServerEvent_DisconnectedMember).DisconnectedMember)
+		case *proto.RPCServerEvent_MemberConnectResponse:
+			c.handleWantsToConnectResponse(event.Event.(*proto.RPCServerEvent_MemberConnectResponse).MemberConnectResponse)
 		}
 		cancel()
 	}

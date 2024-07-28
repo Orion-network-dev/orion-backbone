@@ -8,6 +8,7 @@ import (
 
 	"github.com/MatthieuCoder/OrionV3/internal"
 	"github.com/MatthieuCoder/OrionV3/internal/proto"
+	"github.com/imusmanmalik/randomizer"
 	"github.com/rs/zerolog/log"
 )
 
@@ -94,11 +95,22 @@ func (c *Session) Authenticate(
 	}
 	c.sessionManager.sessions[Event.MemberId] = c
 	c.sessionManager.newClients.Broadcast(
-		&proto.ClientNewOnNetworkEvent{
+		&proto.NewMemberEvent{
 			FriendlyName: Event.FriendlyName,
 			PeerId:       Event.MemberId,
 		},
 	)
+	sessionId, _ := randomizer.RandomString(64)
+	c.sID = sessionId
+	c.streamSend <- &proto.RPCServerEvent{
+		Event: &proto.RPCServerEvent_SessionId{
+			SessionId: &proto.SessionIDIssued{
+				SessionId: sessionId,
+			},
+		},
+	}
+	c.sessionManager.sessionIdsMap[sessionId] = &c.meta.memberId
+
 	go c.eventListeners()
 
 	return nil

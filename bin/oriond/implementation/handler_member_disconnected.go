@@ -5,7 +5,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (c *OrionClientDaemon) handleRemovedClient(event *proto.ClientDisconnectedTeardownEvent) {
+func (c *OrionClientDaemon) handleRemovedClient(event *proto.MemberDisconnectedEvent) {
 	c.tunnelsLock.Lock()
 	defer c.tunnelsLock.Unlock()
 

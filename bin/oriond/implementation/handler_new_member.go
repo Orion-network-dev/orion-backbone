@@ -11,7 +11,7 @@ import (
 
 func (c *OrionClientDaemon) handleNewClient(
 	ctx context.Context,
-	event *proto.ClientNewOnNetworkEvent,
+	event *proto.NewMemberEvent,
 ) {
 	c.tunnelsLock.Lock()
 	defer c.tunnelsLock.Unlock()
@@ -60,7 +60,7 @@ func (c *OrionClientDaemon) handleNewClient(
 	// Inform the peer that we re ready for connection
 	err = c.registryStream.Send(&proto.RPCClientEvent{
 		Event: &proto.RPCClientEvent_Connect{
-			Connect: &proto.ClientWantToConnectToClient{
+			Connect: &proto.MemberConnectEvent{
 				EndpointAddr:      holePunching.ClientEndpointAddr,
 				EndpointPort:      holePunching.ClientEndpointPort,
 				PublicKey:         publickey[:],

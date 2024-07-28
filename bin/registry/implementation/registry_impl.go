@@ -62,28 +62,47 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibeEvent proto.Regi
 	select {
 	case clientEvent := <-eventsStream:
 		if event := clientEvent.GetInitialize(); event != nil && currentSession == nil {
-			session, err := session.New(
-				r.sessionManager,
-			)
-			if err != nil {
-				return err
-			}
-			err = session.Authenticate(
-				event,
-				r.rootCertPool,
-			)
-			if err != nil {
-				return err
+			// check session_id
+			var newSession *session.Session
+
+			if event.SessionId == "" {
+				var err error
+				newSession, err = session.New(
+					r.sessionManager,
+				)
+				if err != nil {
+					return err
+				}
+				err = newSession.Authenticate(
+					event,
+					r.rootCertPool,
+				)
+
+				if err != nil {
+					return err
+				}
+
+			} else {
+				newSession = r.sessionManager.GetSessionFromSessionId(event.SessionId)
+				if newSession != nil {
+					return fmt.Errorf("no such session id")
+				}
 			}
 
 			// Set the session
-			currentSession = session
+			currentSession = newSession
 			// we start a routine to listen to the send stream
 			go func() {
-				for send := range currentSession.Ch() {
-					err := subscibeEvent.Send(send)
+				for {
+					select {
+					case send := <-currentSession.Ch():
+						err := subscibeEvent.Send(send)
 
-					if err != nil {
+						if err != nil {
+							return
+						}
+
+					case <-subscibeEvent.Context().Done():
 						return
 					}
 				}
@@ -92,6 +111,7 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibeEvent proto.Regi
 			// Start the disposal when exiting the routine
 			defer currentSession.Dispose()
 		}
+
 	case <-subscibeEvent.Context().Done():
 		return subscibeEvent.Context().Err()
 	}

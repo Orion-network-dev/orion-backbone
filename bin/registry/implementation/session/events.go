@@ -32,8 +32,8 @@ func (c *Session) eventListeners() {
 				Msgf("notifying of new client")
 
 			c.streamSend <- &proto.RPCServerEvent{
-				Event: &proto.RPCServerEvent_NewClient{
-					NewClient: newClient,
+				Event: &proto.RPCServerEvent_NewMember{
+					NewMember: newClient,
 				},
 			}
 		// Handling the events from the invitation stream
@@ -45,8 +45,8 @@ func (c *Session) eventListeners() {
 					Msg("notifying of new session invitation")
 
 				c.streamSend <- &proto.RPCServerEvent{
-					Event: &proto.RPCServerEvent_WantsToConnect{
-						WantsToConnect: invitation,
+					Event: &proto.RPCServerEvent_MemberConnect{
+						MemberConnect: invitation,
 					},
 				}
 			} else {
@@ -65,8 +65,8 @@ func (c *Session) eventListeners() {
 					Msg("notifying of new invitation request")
 
 				c.streamSend <- &proto.RPCServerEvent{
-					Event: &proto.RPCServerEvent_WantsToConnectResponse{
-						WantsToConnectResponse: invitation_response,
+					Event: &proto.RPCServerEvent_MemberConnectResponse{
+						MemberConnectResponse: invitation_response,
 					},
 				}
 			} else {
@@ -84,8 +84,8 @@ func (c *Session) eventListeners() {
 				Msg("disposing client")
 
 			c.streamSend <- &proto.RPCServerEvent{
-				Event: &proto.RPCServerEvent_RemovedClient{
-					RemovedClient: disposed,
+				Event: &proto.RPCServerEvent_DisconnectedMember{
+					DisconnectedMember: disposed,
 				},
 			}
 		case <-c.ctx.Done():

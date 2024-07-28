@@ -1,55 +1,32 @@
 syntax = "proto3";
 
-option go_package=".;proto";
+option go_package = ".;proto";
 
 service Registry {
   // Subscribe to the event stream
-  rpc SubscribeToStream(stream RPCClientEvent) returns (stream RPCServerEvent);
+  rpc SubscribeToStream(stream RPCClientEvent) returns(stream RPCServerEvent);
 }
 
-// Event sent to all clients when a new orion client joined the network
-message ClientNewOnNetworkEvent {
+message NewMemberEvent {
   string friendly_name = 1;
   uint32 peer_id = 2;
 }
 
-// Sent when a clients lost connection and needs to be completely kicked from the network.
-message ClientDisconnectedTeardownEvent {
+message MemberDisconnectedEvent {
   string friendly_name = 1;
   uint32 peer_id = 2;
 }
 
-
-message RPCServerEvent {
-  oneof event {
-    ClientNewOnNetworkEvent new_client = 1;
-    ClientDisconnectedTeardownEvent removed_client = 2;
-    ClientWantToConnectToClient wants_to_connect = 3;
-    ClientWantToConnectToClientResponse wants_to_connect_response = 4;
-  }
+message MemberConnectEvent {
+  string endpoint_addr = 1;
+  uint32 endpoint_port = 2;
+  bytes public_key = 3;
+  string friendly_name = 5;
+  uint32 destination_peer_id = 6;
+  uint32 source_peer_id = 7;
 }
 
-// Data sent by a client to initialize an orion membership session
-message InitializeRequest {
-  string friendly_name = 1;
-  int64 timestamp_signed = 2;
-  bytes signed = 3;
-  uint32 member_id = 4;
-  bytes certificate = 5;
-}
-
-// Sent by the clients when wanting to initialize a new peer to peer request
-message ClientWantToConnectToClient {
-      string endpoint_addr = 1;
-      uint32 endpoint_port = 2;
-      bytes public_key = 3;
-      string friendly_name = 5;
-      uint32 destination_peer_id = 6;
-      uint32 source_peer_id = 7;
-}
-
-// Response to a ClientWantToConnectToClient
-message ClientWantToConnectToClientResponse {
+message MemberConnectResponseEvent {
   string endpoint_addr = 1;
   uint32 endpoint_port = 2;
   bytes public_key = 3;
@@ -59,12 +36,34 @@ message ClientWantToConnectToClientResponse {
   uint32 source_peer_id = 6;
 }
 
+message SessionIDIssued {
+  string session_id = 1;
+}
+
+message RPCServerEvent {
+  oneof event {
+    NewMemberEvent new_member = 1;
+    MemberDisconnectedEvent disconnected_member = 2;
+    MemberConnectEvent member_connect = 3;
+    MemberConnectResponseEvent member_connect_response = 4;
+    SessionIDIssued session_id = 5;
+  }
+}
+
+message InitializeRequest {
+  string friendly_name = 1;
+  int64 timestamp_signed = 2;
+  bytes signed = 3;
+  uint32 member_id = 4;
+  bytes certificate = 5;
+  string session_id = 6;
+  optional bool reconnect = 7;
+}
+
 message RPCClientEvent {
   oneof event {
-      // First message sent to the server in order to initialize the stream status.
-      InitializeRequest initialize = 1;
-      // Sent when the clients wants to connect to a new client
-      ClientWantToConnectToClient connect = 2;
-      ClientWantToConnectToClientResponse connect_response = 3;
+    InitializeRequest initialize = 1;
+    MemberConnectEvent connect = 2;
+    MemberConnectResponseEvent connect_response = 3;
   }
 }

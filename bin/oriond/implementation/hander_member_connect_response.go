@@ -8,7 +8,7 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-func (c *OrionClientDaemon) handleWantsToConnectResponse(event *proto.ClientWantToConnectToClientResponse) {
+func (c *OrionClientDaemon) handleWantsToConnectResponse(event *proto.MemberConnectResponseEvent) {
 	c.tunnelsLock.Lock()
 	defer c.tunnelsLock.Unlock()
 

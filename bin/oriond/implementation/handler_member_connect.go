@@ -13,7 +13,7 @@ import (
 
 func (c *OrionClientDaemon) handleWantsToConnect(
 	ctx context.Context,
-	event *proto.ClientWantToConnectToClient,
+	event *proto.MemberConnectEvent,
 ) {
 	// We ignore requests that are coming from ourself
 	if event.DestinationPeerId != c.memberId || event.SourcePeerId == c.memberId {
@@ -99,7 +99,7 @@ func (c *OrionClientDaemon) handleWantsToConnect(
 
 	err = c.registryStream.Send(&proto.RPCClientEvent{
 		Event: &proto.RPCClientEvent_ConnectResponse{
-			ConnectResponse: &proto.ClientWantToConnectToClientResponse{
+			ConnectResponse: &proto.MemberConnectResponseEvent{
 				EndpointAddr:      holePunching.ClientEndpointAddr,
 				EndpointPort:      holePunching.ClientEndpointPort,
 				PublicKey:         publicKey[:],

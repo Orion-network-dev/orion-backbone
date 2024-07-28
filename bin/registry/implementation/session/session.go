@@ -8,14 +8,15 @@ import (
 )
 
 type Session struct {
-	invitations          chan *proto.ClientWantToConnectToClient
-	invitationsResponses chan *proto.ClientWantToConnectToClientResponse
+	invitations          chan *proto.MemberConnectEvent
+	invitationsResponses chan *proto.MemberConnectResponseEvent
 	meta                 *SessionMeta
 	sessionManager       *SessionManager
 
 	streamSend chan *proto.RPCServerEvent
 	ctx        context.Context
 	cancel     context.CancelFunc
+	sID        string
 
 	cancelCancelation chan struct{}
 }
@@ -35,10 +36,11 @@ func (c *Session) Dispose() {
 			case <-timer.C:
 				// we should dispose the client
 				c.cancel()
-				c.sessionManager.disposedClients.Broadcast(&proto.ClientDisconnectedTeardownEvent{
+				c.sessionManager.disposedClients.Broadcast(&proto.MemberDisconnectedEvent{
 					PeerId:       meta.memberId,
 					FriendlyName: meta.friendlyName,
 				})
+				c.sessionManager.sessionIdsMap[c.sID] = nil
 				c.sessionManager.sessions[c.meta.memberId] = nil
 			}
 		}()
@@ -52,8 +54,8 @@ func New(
 
 	session := &Session{
 		meta:                 nil,
-		invitations:          make(chan *proto.ClientWantToConnectToClient),
-		invitationsResponses: make(chan *proto.ClientWantToConnectToClientResponse),
+		invitations:          make(chan *proto.MemberConnectEvent),
+		invitationsResponses: make(chan *proto.MemberConnectResponseEvent),
 		sessionManager:       sessionManager,
 		streamSend:           make(chan *proto.RPCServerEvent),
 		ctx:                  ctx,
