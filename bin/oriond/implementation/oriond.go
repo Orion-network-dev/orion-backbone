@@ -78,10 +78,6 @@ func NewOrionClientDaemon(
 		return nil, err
 	}
 
-	if err := orionClient.Start(); err != nil {
-		return nil, err
-	}
-
 	return &orionClient, nil
 }
 

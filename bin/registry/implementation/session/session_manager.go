@@ -28,6 +28,7 @@ func (c *SessionManager) GetSessionFromSessionId(id string) *Session {
 func NewSessionManager() *SessionManager {
 	return &SessionManager{
 		sessions:        map[uint32]*Session{},
+		sessionIdsMap:   make(map[string]*uint32),
 		newClients:      broadcast.NewRelay[*proto.NewMemberEvent](),
 		disposedClients: broadcast.NewRelay[*proto.MemberDisconnectedEvent](),
 	}

@@ -81,7 +81,6 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibeEvent proto.Regi
 				if err != nil {
 					return err
 				}
-
 			} else {
 				newSession = r.sessionManager.GetSessionFromSessionId(event.SessionId)
 				if newSession != nil {

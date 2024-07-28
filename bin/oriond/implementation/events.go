@@ -45,6 +45,8 @@ func (c *OrionClientDaemon) listener() error {
 		case *proto.RPCServerEvent_MemberConnectResponse:
 			c.handleWantsToConnectResponse(event.Event.(*proto.RPCServerEvent_MemberConnectResponse).MemberConnectResponse)
 		case *proto.RPCServerEvent_SessionId:
+			log.Info().
+				Msg("got a sessionId from the registry server")
 			c.sID = event.Event.(*proto.RPCServerEvent_SessionId).SessionId
 		}
 		cancel()

@@ -65,6 +65,12 @@ func main() {
 		log.Error().Err(err).Msgf("failed to bring up orion client daemon")
 		return
 	}
+	err = orionDaemon.Start()
+	if err != nil {
+		log.Error().Err(err).Msgf("failed to bring up orion client daemon")
+		return
+	}
+
 	defer orionDaemon.Dispose()
 	defer cancel()
 
@@ -83,7 +89,11 @@ func main() {
 			if restartCounter > 10 {
 				return
 			}
-			orionDaemon.Start()
+			err := orionDaemon.Start()
+			if err != nil {
+				log.Error().Err(err).Msgf("failed to bring up orion client daemon")
+				return
+			}
 		}
 	}
 }

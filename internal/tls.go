@@ -18,7 +18,6 @@ var (
 )
 
 func loadAuthorityPool() (*x509.CertPool, error) {
-
 	// Load the CA certificate
 	trustedCert, err := os.ReadFile(*AuthorityPath)
 	if err != nil {
