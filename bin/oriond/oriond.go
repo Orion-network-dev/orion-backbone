@@ -4,6 +4,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
@@ -20,6 +22,7 @@ import (
 var (
 	debug          = flag.Bool("debug", false, "change the log level to debug")
 	registryServer = flag.String("registry-server", "reg.orionet.re", "the address of the registry server")
+	pprof          = flag.String("debug-pprof", "0.0.0.0:6060", "")
 	registryPort   = flag.Uint("registry-port", 6443, "the port used by the registry")
 )
 
@@ -32,6 +35,9 @@ func main() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	if *debug {
+		go func() {
+			fmt.Println(http.ListenAndServe(*pprof, nil))
+		}()
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 

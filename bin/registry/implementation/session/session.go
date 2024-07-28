@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/MatthieuCoder/OrionV3/internal/proto"
+	"github.com/rs/zerolog/log"
 )
 
 type Session struct {
@@ -28,6 +29,7 @@ func (c *Session) Dispose() {
 
 		// wait 2 minutes before ending a session
 		go func() {
+			log.Debug().Msg("starting to tick for session expitation")
 			timer := time.NewTimer(time.Second * 2)
 
 			select {

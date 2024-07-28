@@ -88,19 +88,27 @@ func (c *Session) Authenticate(
 
 	// the user is authenticated, we start listening for global events
 
+	log.Debug().Msg("client created")
 	// registering in the manager
 	c.meta = &SessionMeta{
 		memberId:     Event.MemberId,
 		friendlyName: Event.FriendlyName,
 	}
 	c.sessionManager.sessions[Event.MemberId] = c
+
+	log.Debug().Msg("broadcasting the new client message")
 	c.sessionManager.newClients.Broadcast(
 		&proto.NewMemberEvent{
 			FriendlyName: Event.FriendlyName,
 			PeerId:       Event.MemberId,
 		},
 	)
-	sessionId, _ := randomizer.RandomString(64)
+
+	log.Debug().Msg("random session id generation")
+	sessionId, err := randomizer.RandomString(64)
+	if err != nil {
+		return err
+	}
 	c.sID = sessionId
 	c.streamSend <- &proto.RPCServerEvent{
 		Event: &proto.RPCServerEvent_SessionId{
@@ -109,6 +117,7 @@ func (c *Session) Authenticate(
 	}
 	c.sessionManager.sessionIdsMap[sessionId] = &c.meta.memberId
 
+	log.Debug().Msg("starting listeners")
 	go c.eventListeners()
 
 	return nil

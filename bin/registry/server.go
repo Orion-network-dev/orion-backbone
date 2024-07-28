@@ -2,9 +2,13 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"net"
 	"os"
 	"time"
+
+	"net/http"
+	_ "net/http/pprof"
 
 	"github.com/MatthieuCoder/OrionV3/bin/registry/implementation"
 	"github.com/MatthieuCoder/OrionV3/internal"
@@ -16,6 +20,7 @@ import (
 )
 
 var (
+	pprof         = flag.String("debug-pprof", "0.0.0.0:6060", "")
 	debug         = flag.Bool("debug", false, "change the log level to debug")
 	listeningHost = flag.String("listen-host", "127.0.0.1:6443", "the port the server will listen on")
 )
@@ -28,6 +33,9 @@ func main() {
 	// Default level for this example is info, unless debug flag is present
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	if *debug {
+		go func() {
+			fmt.Println(http.ListenAndServe(*pprof, nil))
+		}()
 		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}

@@ -8,12 +8,14 @@ import (
 func (c *Session) HandleClientEvent(
 	Event *proto.RPCClientEvent,
 ) error {
+	log.Debug().Msg("handling client event")
 	switch Event.Event.(type) {
 	case *proto.RPCClientEvent_Connect:
 		return c.handle_Connect(Event.Event.(*proto.RPCClientEvent_Connect))
 	case *proto.RPCClientEvent_ConnectResponse:
 		return c.handle_ConnectResponse(Event.Event.(*proto.RPCClientEvent_ConnectResponse))
 	}
+
 	return nil
 }
 

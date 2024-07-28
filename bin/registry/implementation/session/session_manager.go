@@ -2,6 +2,7 @@ package session
 
 import (
 	"github.com/MatthieuCoder/OrionV3/internal/proto"
+	"github.com/rs/zerolog/log"
 	"github.com/teivah/broadcast"
 )
 
@@ -18,6 +19,7 @@ func (c *SessionManager) GetSession(session uint32) *Session {
 }
 
 func (c *SessionManager) GetSessionFromSessionId(id string) *Session {
+	log.Debug().Str("session-id", id).Msg("getting by session id")
 	uid := c.sessionIdsMap[id]
 	if uid == nil {
 		return nil
