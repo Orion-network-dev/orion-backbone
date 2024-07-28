@@ -88,6 +88,8 @@ func (c *Session) eventListeners() {
 					RemovedClient: disposed,
 				},
 			}
+		case <-c.ctx.Done():
+			return
 		}
 	}
 }
