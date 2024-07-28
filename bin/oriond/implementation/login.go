@@ -86,7 +86,9 @@ func (c *OrionClientDaemon) login() error {
 }
 
 func (c *OrionClientDaemon) Start() error {
-	c.ctxCancel()
+	if c.ctxCancel != nil && c.Context != nil {
+		c.ctxCancel()
+	}
 
 	ctx, cancel := context.WithCancel(c.ParentCtx)
 	c.ctxCancel = cancel
