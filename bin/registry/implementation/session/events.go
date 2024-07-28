@@ -20,13 +20,13 @@ func (c *Session) HandleClientEvent(
 }
 
 func (c *Session) eventListeners() {
-	newClient := c.sessionManager.newClients.Listener(1)
-	disposedClient := c.sessionManager.disposedClients.Listener(1)
+	newClient := c.sessionManager.newClients.Listener(1).Ch()
+	disposedClient := c.sessionManager.disposedClients.Listener(1).Ch()
 
 	for {
 		select {
 		// Handling the events from the newClients stream
-		case newClient := <-newClient.Ch():
+		case newClient := <-newClient:
 			// When a new client joins, we send a notification message
 			log.Debug().
 				Uint32("new-member-id", newClient.PeerId).
@@ -79,7 +79,7 @@ func (c *Session) eventListeners() {
 					Msg("wrong dst-id for this routine")
 			}
 
-		case disposed := <-disposedClient.Ch():
+		case disposed := <-disposedClient:
 			log.Debug().
 				Uint32("disposed-member-id", disposed.PeerId).
 				Uint32("member-id", c.meta.memberId).

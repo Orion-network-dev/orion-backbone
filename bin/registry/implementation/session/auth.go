@@ -97,7 +97,7 @@ func (c *Session) Authenticate(
 	c.sessionManager.sessions[Event.MemberId] = c
 
 	log.Debug().Msg("broadcasting the new client message")
-	c.sessionManager.newClients.Broadcast(
+	c.sessionManager.newClients.Notify(
 		&proto.NewMemberEvent{
 			FriendlyName: Event.FriendlyName,
 			PeerId:       Event.MemberId,

@@ -40,5 +40,5 @@ func (c *OrionClientDaemon) handleWantsToConnectResponse(event *proto.MemberConn
 	}
 
 	// Ends the waiting stream in the new_client handler
-	c.establishedStream.Broadcast(event.SourcePeerId)
+	c.establishedStream.Notify(event.SourcePeerId)
 }

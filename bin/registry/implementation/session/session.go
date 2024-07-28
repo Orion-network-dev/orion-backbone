@@ -38,7 +38,7 @@ func (c *Session) Dispose() {
 			case <-timer.C:
 				// we should dispose the client
 				c.cancel()
-				c.sessionManager.disposedClients.Broadcast(&proto.MemberDisconnectedEvent{
+				c.sessionManager.disposedClients.Notify(&proto.MemberDisconnectedEvent{
 					PeerId:       meta.memberId,
 					FriendlyName: meta.friendlyName,
 				})
