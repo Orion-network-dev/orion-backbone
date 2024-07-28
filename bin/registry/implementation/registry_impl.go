@@ -104,7 +104,11 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibeEvent proto.Regi
 			if err != nil {
 				return err
 			}
-
+		case serverMessage := <-currentSession.Ch():
+			err := subscibeEvent.Send(serverMessage)
+			if err != nil {
+				return err
+			}
 		case <-subscibeEvent.Context().Done():
 			return subscibeEvent.Context().Err()
 		}
