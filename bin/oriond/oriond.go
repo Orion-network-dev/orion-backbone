@@ -68,13 +68,22 @@ func main() {
 	defer orionDaemon.Dispose()
 	defer cancel()
 
-	// Wait for exit signal
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
-	select {
-	case <-sigs:
-	case <-ctx.Done():
-	case <-orionDaemon.Context.Done():
+	restartCounter := 0
+	for {
+		select {
+		case <-sigs:
+			return
+		case <-ctx.Done():
+			return
+		case <-orionDaemon.Context.Done():
+			restartCounter += 1
+			if restartCounter > 10 {
+				return
+			}
+			orionDaemon.Start()
+		}
 	}
 }

@@ -44,6 +44,8 @@ func (c *OrionClientDaemon) listener() error {
 			c.handleRemovedClient(event.Event.(*proto.RPCServerEvent_DisconnectedMember).DisconnectedMember)
 		case *proto.RPCServerEvent_MemberConnectResponse:
 			c.handleWantsToConnectResponse(event.Event.(*proto.RPCServerEvent_MemberConnectResponse).MemberConnectResponse)
+		case *proto.RPCServerEvent_SessionId:
+			c.sID = event.Event.(*proto.RPCServerEvent_SessionId).SessionId
 		}
 		cancel()
 	}

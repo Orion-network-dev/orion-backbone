@@ -1,6 +1,7 @@
 package implementation
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/x509"
 	"encoding/pem"
@@ -65,6 +66,11 @@ func (c *OrionClientDaemon) login() error {
 			Msg(err.Error())
 		return err
 	}
+
+	if c.sID != "" {
+		nonce.SessionId = c.sID
+	}
+
 	// We send the login-initialize information to the server
 	if err = c.registryStream.Send(&proto.RPCClientEvent{
 		Event: &proto.RPCClientEvent_Initialize{
@@ -76,5 +82,25 @@ func (c *OrionClientDaemon) login() error {
 			Msg("couldn't send the login signature to the server")
 	}
 
+	return nil
+}
+
+func (c *OrionClientDaemon) Start() error {
+	c.ctxCancel()
+
+	ctx, cancel := context.WithCancel(c.ParentCtx)
+	c.ctxCancel = cancel
+	c.Context = ctx
+
+	// Intialize the streams to the signaling server
+	if err := c.initializeStream(); err != nil {
+		return err
+	}
+	if err := c.login(); err != nil {
+		return err
+	}
+
+	// Start the listener as a background task
+	go c.listener()
 	return nil
 }

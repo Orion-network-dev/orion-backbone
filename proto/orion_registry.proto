@@ -36,17 +36,13 @@ message MemberConnectResponseEvent {
   uint32 source_peer_id = 6;
 }
 
-message SessionIDIssued {
-  string session_id = 1;
-}
-
 message RPCServerEvent {
   oneof event {
     NewMemberEvent new_member = 1;
     MemberDisconnectedEvent disconnected_member = 2;
     MemberConnectEvent member_connect = 3;
     MemberConnectResponseEvent member_connect_response = 4;
-    SessionIDIssued session_id = 5;
+    string session_id = 5;
   }
 }
 

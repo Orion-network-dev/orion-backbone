@@ -23,6 +23,7 @@ type OrionClientDaemon struct {
 	memberId     uint32
 	friendlyName string
 	asn          uint32
+	sID          string
 
 	// Structs used to manage the state of OrionD
 	frrManager *frr.FrrConfigManager
@@ -38,6 +39,7 @@ type OrionClientDaemon struct {
 
 	// Runtime information
 	Context           context.Context
+	ParentCtx         context.Context
 	ctxCancel         context.CancelFunc
 	establishedStream *broadcast.Relay[uint32]
 }
@@ -47,13 +49,11 @@ func NewOrionClientDaemon(
 	Context context.Context,
 	ClientConnection *grpc.ClientConn,
 ) (*OrionClientDaemon, error) {
-	ctx, cancel := context.WithCancel(Context)
 	orionClient := OrionClientDaemon{
 		registryClient:     proto.NewRegistryClient(ClientConnection),
 		holePunchingClient: proto.NewHolePunchingServiceClient(ClientConnection),
 		friendlyName:       *friendlyName,
-		Context:            ctx,
-		ctxCancel:          cancel,
+		ParentCtx:          Context,
 		establishedStream:  broadcast.NewRelay[uint32](),
 		tunnels:            make(map[uint32]*link.PeerLink),
 		tunnelsLock:        &sync.RWMutex{},
@@ -78,18 +78,9 @@ func NewOrionClientDaemon(
 		return nil, err
 	}
 
-	// Intialize the streams to the signaling server
-	if err := orionClient.initializeStream(); err != nil {
+	if err := orionClient.Start(); err != nil {
 		return nil, err
 	}
-
-	// Login to the server using to initialized sessions
-	if err := orionClient.login(); err != nil {
-		return nil, err
-	}
-
-	// Start the listener as a background task
-	go orionClient.listener()
 
 	return &orionClient, nil
 }

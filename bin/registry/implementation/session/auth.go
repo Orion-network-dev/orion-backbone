@@ -104,9 +104,7 @@ func (c *Session) Authenticate(
 	c.sID = sessionId
 	c.streamSend <- &proto.RPCServerEvent{
 		Event: &proto.RPCServerEvent_SessionId{
-			SessionId: &proto.SessionIDIssued{
-				SessionId: sessionId,
-			},
+			SessionId: sessionId,
 		},
 	}
 	c.sessionManager.sessionIdsMap[sessionId] = &c.meta.memberId
