@@ -1,24 +1,19 @@
 package implementation
 
 import (
-	"context"
 	"crypto/x509"
 	"fmt"
 	"os"
-	"sync"
 
+	"github.com/MatthieuCoder/OrionV3/bin/registry/implementation/session"
 	"github.com/MatthieuCoder/OrionV3/internal"
 	"github.com/MatthieuCoder/OrionV3/internal/proto"
 	"github.com/rs/zerolog/log"
-	"github.com/teivah/broadcast"
 )
 
 type OrionRegistryImplementation struct {
-	newClients      *broadcast.Relay[*proto.ClientNewOnNetworkEvent]
-	disposedClients *broadcast.Relay[*proto.ClientDisconnectedTeardownEvent]
-	rootCertPool    *x509.CertPool
-	clientPool      []*Client
-	clientPoolLock  sync.Mutex
+	rootCertPool   *x509.CertPool
+	sessionManager *session.SessionManager
 	proto.UnimplementedRegistryServer
 }
 
@@ -26,7 +21,9 @@ func NewOrionRegistryImplementation() (*OrionRegistryImplementation, error) {
 	// Reading the root certificate
 	ca, err := os.ReadFile(*internal.AuthorityPath)
 	if err != nil {
-		log.Debug().Err(err).Msg("failed to import the root ca certificate")
+		log.Debug().
+			Err(err).
+			Msg("failed to import the root ca certificate")
 		return nil, err
 	}
 
@@ -39,142 +36,77 @@ func NewOrionRegistryImplementation() (*OrionRegistryImplementation, error) {
 	}
 
 	return &OrionRegistryImplementation{
-		newClients:      broadcast.NewRelay[*proto.ClientNewOnNetworkEvent](),
-		disposedClients: broadcast.NewRelay[*proto.ClientDisconnectedTeardownEvent](),
-		clientPoolLock:  sync.Mutex{},
-		clientPool:      make([]*Client, 255),
-		rootCertPool:    root,
+		sessionManager: session.NewSessionManager(),
+		rootCertPool:   root,
 	}, nil
 }
-func (r *OrionRegistryImplementation) SubscribeToStream(subscibe_event proto.Registry_SubscribeToStreamServer) error {
-	var client *Client = nil
-	log.Debug().Msgf("new un-initialized client")
-	event, err := subscibe_event.Recv()
-	if err != nil {
-		return err
-	}
-	ctx := subscibe_event.Context()
 
-	// In case of a initialization event
-	if initialize := event.GetInitialize(); initialize != nil {
-		err := Authenticate(
-			initialize.TimestampSigned,
-			initialize.Certificate,
-			initialize.Signed,
-			initialize.MemberId,
-			initialize.FriendlyName,
-			r.rootCertPool,
-		)
-		if err != nil {
-			log.Error().Err(err).Msg("user failed to authenticate")
-			return err
-		}
-		// Check if this user-id is already used/connected
-		if r.clientPool[initialize.MemberId] != nil {
-			err := fmt.Errorf("this member_id seems to already have a running session")
-			log.Debug().Err(err).Msg("this member_id already seems to be connected")
-			return err
-		}
+func (r *OrionRegistryImplementation) SubscribeToStream(subscibeEvent proto.Registry_SubscribeToStreamServer) error {
+	// Used to store the current session
+	var currentSession *session.Session
+	// Used to handle the events
+	eventsStream := make(chan *proto.RPCClientEvent)
 
-		client = NewClient(initialize.MemberId, initialize.FriendlyName)
-		client.Allocate(r)
-		defer client.Dispose(r)
-
-		log.Info().Uint32("member-id", client.memberId).Msg("client authenticated")
-
-		r.newClients.Broadcast(&proto.ClientNewOnNetworkEvent{
-			FriendlyName: initialize.FriendlyName,
-			PeerId:       initialize.MemberId,
-		})
-	} else {
-		err := fmt.Errorf("the first message wasn't a initialize session message")
-		log.Debug().Err(err).Msg("wrong first message")
-		return err
-	}
-
-	// We start a go routine to listen for global events
+	// Simple subroutine to handle end various events
 	go func() {
-		newClients := r.newClients.Listener(100)
-		disposedClients := r.disposedClients.Listener(100)
-		context_coroutine := context.WithoutCancel(ctx)
 		for {
-			select {
-			case newClient := <-newClients.Ch():
-				// When a new client joins, we send a notification message
-				log.Debug().Uint32("new-member-id", newClient.PeerId).Uint32("session", client.memberId).Msgf("notifying of new client")
-				subscibe_event.Send(&proto.RPCServerEvent{
-					Event: &proto.RPCServerEvent_NewClient{
-						NewClient: newClient,
-					},
-				})
-			case invitation := <-client.invitations:
-				if invitation.DestinationPeerId == client.memberId {
-
-					log.Debug().Uint32("src-member-id", invitation.SourcePeerId).Uint32("dst-member-id", invitation.DestinationPeerId).Msg("notifying of new session invitation")
-
-					subscibe_event.Send(&proto.RPCServerEvent{
-						Event: &proto.RPCServerEvent_WantsToConnect{
-							WantsToConnect: invitation,
-						},
-					})
-				} else {
-					log.Error().Uint32("src-member-id", invitation.SourcePeerId).Uint32("dst-member-id", invitation.DestinationPeerId).Uint32("routine-member-id", client.memberId).Msg("wrong dst-id for this routine")
-				}
-			case invitation_response := <-client.invitationsResponses:
-
-				if invitation_response.DestinationPeerId == client.memberId {
-					log.Debug().Uint32("src-member-id", invitation_response.SourcePeerId).Uint32("dst-member-id", client.memberId).Msg("notifying of new invitation request")
-
-					subscibe_event.Send(&proto.RPCServerEvent{
-						Event: &proto.RPCServerEvent_WantsToConnectResponse{
-							WantsToConnectResponse: invitation_response,
-						},
-					})
-				} else {
-					log.Error().Uint32("src-member-id", invitation_response.SourcePeerId).Uint32("dst-member-id", invitation_response.DestinationPeerId).Uint32("routine-member-id", client.memberId).Msg("wrong dst-id for this routine")
-				}
-			case disposed := <-disposedClients.Ch():
-				log.Debug().Uint32("disposed-member-id", disposed.PeerId).Uint32("member-id", client.memberId).Msg("disposing client")
-
-				subscibe_event.Send(&proto.RPCServerEvent{
-					Event: &proto.RPCServerEvent_RemovedClient{
-						RemovedClient: disposed,
-					},
-				})
-
-			case <-context_coroutine.Done():
-				log.Debug().Err(err).Msg("client coroutine exited")
+			event, err := subscibeEvent.Recv()
+			if err != nil {
 				return
 			}
+
+			eventsStream <- event
 		}
 	}()
 
-	for {
-		event, err := subscibe_event.Recv()
-		if err != nil {
-			log.Debug().Err(err).Msg("subscribe_event exited")
-			return err
-		}
+	select {
+	case clientEvent := <-eventsStream:
+		if event := clientEvent.GetInitialize(); event != nil && currentSession == nil {
+			session, err := session.New(
+				r.sessionManager,
+			)
+			if err != nil {
+				return err
+			}
+			err = session.Authenticate(
+				event,
+				r.rootCertPool,
+			)
+			if err != nil {
+				return err
+			}
 
-		if connect := event.GetConnect(); connect != nil {
-			if connect.SourcePeerId == client.memberId && connect.DestinationPeerId != client.memberId {
-				log.Debug().Uint32("source", client.memberId).Uint32("destination", connect.DestinationPeerId).Msgf("Connect Init")
-				if dstClient := r.clientPool[connect.DestinationPeerId]; dstClient != nil {
-					dstClient.invitations <- connect
-				} else {
-					log.Error().Msgf("%d is not available", connect.DestinationPeerId)
+			// Set the session
+			currentSession = session
+			// we start a routine to listen to the send stream
+			go func() {
+				for send := range currentSession.Ch() {
+					err := subscibeEvent.Send(send)
+
+					if err != nil {
+						return
+					}
 				}
-			}
+			}()
+
+			// Start the disposal when exiting the routine
+			defer currentSession.Dispose()
 		}
-		if connect_response := event.GetConnectResponse(); connect_response != nil {
-			if connect_response.SourcePeerId == client.memberId && connect_response.DestinationPeerId != client.memberId {
-				log.Debug().Uint32("source", client.memberId).Uint32("destination", connect_response.DestinationPeerId).Msgf("Connect Response")
-				if dstClient := r.clientPool[connect_response.DestinationPeerId]; dstClient != nil {
-					dstClient.invitationsResponses <- connect_response
-				} else {
-					log.Error().Msgf("%d is not available", connect_response.DestinationPeerId)
-				}
+	case <-subscibeEvent.Context().Done():
+		return subscibeEvent.Context().Err()
+	}
+
+	for {
+		select {
+		// Handle all the events from the client
+		case event := <-eventsStream:
+			err := currentSession.HandleClientEvent(event)
+			if err != nil {
+				return err
 			}
+
+		case <-subscibeEvent.Context().Done():
+			return subscibeEvent.Context().Err()
 		}
 	}
 }
