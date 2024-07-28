@@ -88,6 +88,10 @@ func (c *Session) Authenticate(
 	// the user is authenticated, we start listening for global events
 
 	// registering in the manager
+	c.meta = &SessionMeta{
+		memberId:     Event.MemberId,
+		friendlyName: Event.FriendlyName,
+	}
 	c.sessionManager.sessions[Event.MemberId] = c
 	c.sessionManager.newClients.Broadcast(
 		&proto.ClientNewOnNetworkEvent{
