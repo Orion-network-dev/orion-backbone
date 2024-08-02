@@ -65,7 +65,7 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibeEvent proto.Regi
 			// check session_id
 			var newSession *session.Session
 
-			if !*event.Reconnect {
+			if !event.Reconnect {
 				var err error
 				newSession, err = session.New(
 					r.sessionManager,

@@ -69,6 +69,7 @@ func (c *OrionClientDaemon) login() error {
 
 	if c.sID != "" {
 		nonce.SessionId = c.sID
+		nonce.Reconnect = true
 	}
 
 	// We send the login-initialize information to the server
