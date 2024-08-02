@@ -28,8 +28,8 @@ func GetSelfAddress(self uint32, other uint32) (*net.IPNet, *net.IPNet, error) {
 		return nil, nil, err
 	}
 
-	selfIPAddress := ipInt + uint32(peer<<1)
-	otherIPAddress := ipInt + uint32(peer<<1)
+	selfIPAddress := ipInt + (peer << 1)
+	otherIPAddress := ipInt + (peer << 1)
 
 	if self > other {
 		selfIPAddress = selfIPAddress + 1

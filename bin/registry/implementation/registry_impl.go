@@ -58,13 +58,14 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibeEvent proto.Regi
 			eventsStream <- event
 		}
 	}()
+
 	select {
 	case clientEvent := <-eventsStream:
 		if event := clientEvent.GetInitialize(); event != nil && currentSession == nil {
 			// check session_id
 			var newSession *session.Session
 
-			if event.SessionId == "" {
+			if !*event.Reconnect {
 				var err error
 				newSession, err = session.New(
 					r.sessionManager,
@@ -72,6 +73,7 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibeEvent proto.Regi
 				if err != nil {
 					return err
 				}
+
 				err = newSession.Authenticate(
 					event,
 					r.rootCertPool,
@@ -82,7 +84,7 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibeEvent proto.Regi
 				}
 			} else {
 				newSession = r.sessionManager.GetSessionFromSessionId(event.SessionId)
-				if newSession != nil {
+				if newSession == nil {
 					return fmt.Errorf("no such session id")
 				}
 			}
