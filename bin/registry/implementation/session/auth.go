@@ -127,11 +127,11 @@ func (c *Session) Authenticate(
 	c.sID = sessionId
 	// Since the registry is not handling the channel while login, we simply wait by launching a goroutine
 	go func() {
-		c.streamSend <- &proto.RPCServerEvent{
+		c.streamSend.Broadcast(&proto.RPCServerEvent{
 			Event: &proto.RPCServerEvent_SessionId{
 				SessionId: sessionId,
 			},
-		}
+		})
 	}()
 	c.sessionManager.sessionIdsMap[sessionId] = &c.meta.memberId
 

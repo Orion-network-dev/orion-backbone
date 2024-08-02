@@ -115,6 +115,7 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibeEvent proto.Regi
 	case <-subscibeEvent.Context().Done():
 		return subscibeEvent.Context().Err()
 	}
+	ch := currentSession.Ch()
 
 	for {
 		select {
@@ -124,7 +125,8 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibeEvent proto.Regi
 			if err != nil {
 				return err
 			}
-		case serverMessage := <-currentSession.Ch():
+		// This is not working.
+		case serverMessage := <-ch:
 			err := subscibeEvent.Send(serverMessage)
 			if err != nil {
 				return err

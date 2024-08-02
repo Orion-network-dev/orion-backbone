@@ -6,6 +6,7 @@ import (
 
 	"github.com/MatthieuCoder/OrionV3/internal/proto"
 	"github.com/rs/zerolog/log"
+	"github.com/teivah/broadcast"
 )
 
 type Session struct {
@@ -14,7 +15,7 @@ type Session struct {
 	meta                 *SessionMeta
 	sessionManager       *SessionManager
 
-	streamSend chan *proto.RPCServerEvent
+	streamSend *broadcast.Relay[*proto.RPCServerEvent]
 	ctx        context.Context
 	cancel     context.CancelFunc
 	sID        string
@@ -59,7 +60,7 @@ func New(
 		invitations:          make(chan *proto.MemberConnectEvent),
 		invitationsResponses: make(chan *proto.MemberConnectResponseEvent),
 		sessionManager:       sessionManager,
-		streamSend:           make(chan *proto.RPCServerEvent),
+		streamSend:           broadcast.NewRelay[*proto.RPCServerEvent](),
 		ctx:                  ctx,
 		cancel:               cancel,
 	}
@@ -67,6 +68,6 @@ func New(
 	return session, nil
 }
 
-func (c *Session) Ch() chan *proto.RPCServerEvent {
-	return c.streamSend
+func (c *Session) Ch() <-chan *proto.RPCServerEvent {
+	return c.streamSend.Listener(10).Ch()
 }

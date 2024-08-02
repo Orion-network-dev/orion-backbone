@@ -33,11 +33,11 @@ func (c *Session) eventListeners() {
 				Uint32("session", c.meta.memberId).
 				Msgf("notifying of new client")
 
-			c.streamSend <- &proto.RPCServerEvent{
+			c.streamSend.Broadcast(&proto.RPCServerEvent{
 				Event: &proto.RPCServerEvent_NewMember{
 					NewMember: newClient,
 				},
-			}
+			})
 		// Handling the events from the invitation stream
 		case invitation := <-c.invitations:
 			if invitation.DestinationPeerId == c.meta.memberId {
@@ -46,11 +46,11 @@ func (c *Session) eventListeners() {
 					Uint32("dst-member-id", invitation.DestinationPeerId).
 					Msg("notifying of new session invitation")
 
-				c.streamSend <- &proto.RPCServerEvent{
+				c.streamSend.Broadcast(&proto.RPCServerEvent{
 					Event: &proto.RPCServerEvent_MemberConnect{
 						MemberConnect: invitation,
 					},
-				}
+				})
 			} else {
 				log.Error().
 					Uint32("src-member-id", invitation.SourcePeerId).
@@ -66,11 +66,11 @@ func (c *Session) eventListeners() {
 					Uint32("dst-member-id", c.meta.memberId).
 					Msg("notifying of new invitation request")
 
-				c.streamSend <- &proto.RPCServerEvent{
+				c.streamSend.Broadcast(&proto.RPCServerEvent{
 					Event: &proto.RPCServerEvent_MemberConnectResponse{
 						MemberConnectResponse: invitation_response,
 					},
-				}
+				})
 			} else {
 				log.Error().
 					Uint32("src-member-id", invitation_response.SourcePeerId).
@@ -85,11 +85,11 @@ func (c *Session) eventListeners() {
 				Uint32("member-id", c.meta.memberId).
 				Msg("disposing client")
 
-			c.streamSend <- &proto.RPCServerEvent{
+			c.streamSend.Broadcast(&proto.RPCServerEvent{
 				Event: &proto.RPCServerEvent_DisconnectedMember{
 					DisconnectedMember: disposed,
 				},
-			}
+			})
 		case <-c.ctx.Done():
 			return
 		}
