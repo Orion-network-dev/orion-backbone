@@ -62,10 +62,16 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibeEvent proto.Regi
 	select {
 	case clientEvent := <-eventsStream:
 		if event := clientEvent.GetInitialize(); event != nil && currentSession == nil {
+
 			// check session_id
 			var newSession *session.Session
 
 			if !event.Reconnect {
+				if session := r.sessionManager.GetSession(event.MemberId); session != nil {
+					log.Info().Msg("Disposing old session for re-login")
+					session.Dispose()
+				}
+
 				var err error
 				newSession, err = session.New(
 					r.sessionManager,
