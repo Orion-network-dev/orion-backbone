@@ -87,6 +87,7 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibeEvent proto.Regi
 				if newSession == nil {
 					return fmt.Errorf("no such session id")
 				}
+				newSession.Restore()
 			}
 
 			// Set the session

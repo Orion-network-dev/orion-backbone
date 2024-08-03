@@ -50,6 +50,13 @@ func (c *Session) Dispose() {
 	}
 }
 
+func (c *Session) Restore() {
+	if c.meta != nil {
+		log.Info().Uint32("uid", c.meta.memberId).Msg("Session restored")
+		c.cancelCancelation <- struct{}{}
+	}
+}
+
 func New(
 	sessionManager *SessionManager,
 ) (*Session, error) {
