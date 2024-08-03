@@ -27,7 +27,7 @@ func (c *Session) Dispose() {
 	// Checking if the client is auth'ed
 	if c.meta != nil {
 		meta := c.meta
-
+		c.cancelCancelation = make(chan struct{})
 		// wait 2 minutes before ending a session
 		go func() {
 			log.Debug().Msg("starting to tick for session expitation")
@@ -51,7 +51,7 @@ func (c *Session) Dispose() {
 }
 
 func (c *Session) Restore() {
-	if c.meta != nil {
+	if c.meta != nil && c.cancelCancelation != nil {
 		log.Info().Uint32("uid", c.meta.memberId).Msg("Session restored")
 		c.cancelCancelation <- struct{}{}
 	}
