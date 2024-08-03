@@ -69,7 +69,7 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibeEvent proto.Regi
 			if !event.Reconnect {
 				if session := r.sessionManager.GetSession(event.MemberId); session != nil {
 					log.Info().Msg("Disposing old session for re-login")
-					session.Dispose()
+					session.DisposeInstant()
 				}
 
 				var err error

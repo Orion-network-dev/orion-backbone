@@ -26,28 +26,32 @@ type Session struct {
 func (c *Session) Dispose() {
 	// Checking if the client is auth'ed
 	if c.meta != nil {
-		meta := c.meta
 		c.cancelCancelation = make(chan struct{})
 		// wait 2 minutes before ending a session
 		go func() {
 			log.Debug().Msg("starting to tick for session expitation")
-			timer := time.NewTimer(time.Second * 2)
+			timer := time.NewTimer(time.Second * 20)
 
 			select {
 			case <-c.cancelCancelation:
 				return
 			case <-timer.C:
-				// we should dispose the client
-				c.cancel()
-				c.sessionManager.disposedClients.Notify(&proto.MemberDisconnectedEvent{
-					PeerId:       meta.memberId,
-					FriendlyName: meta.friendlyName,
-				})
-				c.sessionManager.sessionIdsMap[c.sID] = nil
-				c.sessionManager.sessions[c.meta.memberId] = nil
+				c.DisposeInstant()
 			}
 		}()
 	}
+}
+
+func (c *Session) DisposeInstant() {
+	meta := c.meta
+	// we should dispose the client
+	c.cancel()
+	c.sessionManager.disposedClients.Notify(&proto.MemberDisconnectedEvent{
+		PeerId:       meta.memberId,
+		FriendlyName: meta.friendlyName,
+	})
+	c.sessionManager.sessionIdsMap[c.sID] = nil
+	c.sessionManager.sessions[c.meta.memberId] = nil
 }
 
 func (c *Session) Restore() {
