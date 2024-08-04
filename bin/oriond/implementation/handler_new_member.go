@@ -81,11 +81,12 @@ func (c *OrionClientDaemon) handleNewClient(
 	go func() {
 		waitingForResponse, cancel := context.WithTimeout(c.Context, time.Minute)
 		defer cancel()
-		establshed_stream := c.establishedStream.Listener(10).Ch()
+		establshed_stream := c.establishedStream.Listener(10)
+		defer establshed_stream.Close()
 		for {
 			select {
-			case establishedStreamID := <-establshed_stream:
-				// Our connection got succesfullt established
+			case establishedStreamID := <-establshed_stream.Ch():
+				// Our connection got succesfully established
 				if establishedStreamID == event.PeerId {
 					return
 				}

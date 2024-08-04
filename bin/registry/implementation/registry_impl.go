@@ -73,12 +73,9 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibeEvent proto.Regi
 				}
 
 				var err error
-				newSession, err = session.New(
+				newSession = session.New(
 					r.sessionManager,
 				)
-				if err != nil {
-					return err
-				}
 
 				err = newSession.Authenticate(
 					event,
@@ -100,9 +97,11 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibeEvent proto.Regi
 			currentSession = newSession
 			// we start a routine to listen to the send stream
 			go func() {
+				listener := currentSession.Ch()
+				defer listener.Close()
 				for {
 					select {
-					case send := <-currentSession.Ch():
+					case send := <-listener.Ch():
 						err := subscibeEvent.Send(send)
 
 						if err != nil {
@@ -122,7 +121,8 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibeEvent proto.Regi
 	case <-subscibeEvent.Context().Done():
 		return subscibeEvent.Context().Err()
 	}
-	ch := currentSession.Ch()
+	listenerServer := currentSession.Ch()
+	defer listenerServer.Close()
 
 	for {
 		select {
@@ -133,7 +133,7 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibeEvent proto.Regi
 				return err
 			}
 		// This is not working.
-		case serverMessage := <-ch:
+		case serverMessage := <-listenerServer.Ch():
 			err := subscibeEvent.Send(serverMessage)
 			if err != nil {
 				return err

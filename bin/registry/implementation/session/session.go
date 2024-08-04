@@ -50,6 +50,7 @@ func (c *Session) DisposeInstant() {
 		PeerId:       meta.memberId,
 		FriendlyName: meta.friendlyName,
 	})
+
 	c.sessionManager.sessionIdsMap[c.sID] = nil
 	c.sessionManager.sessions[c.meta.memberId] = nil
 }
@@ -63,7 +64,7 @@ func (c *Session) Restore() {
 
 func New(
 	sessionManager *SessionManager,
-) (*Session, error) {
+) *Session {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	session := &Session{
@@ -76,9 +77,9 @@ func New(
 		cancel:               cancel,
 	}
 
-	return session, nil
+	return session
 }
 
-func (c *Session) Ch() <-chan *proto.RPCServerEvent {
-	return c.streamSend.Listener(10).Ch()
+func (c *Session) Ch() *broadcast.Listener[*proto.RPCServerEvent] {
+	return c.streamSend.Listener(10)
 }
