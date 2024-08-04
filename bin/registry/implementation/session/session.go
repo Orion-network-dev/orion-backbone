@@ -53,6 +53,9 @@ func (c *Session) DisposeInstant() {
 
 	c.sessionManager.sessionIdsMap[c.sID] = nil
 	c.sessionManager.sessions[c.meta.memberId] = nil
+
+	// todo: implements ack in the protocol
+	time.Sleep(2 * time.Second)
 }
 
 func (c *Session) Restore() {

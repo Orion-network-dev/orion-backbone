@@ -95,7 +95,7 @@ func main() {
 			if restartCounter > 10 {
 				return
 			}
-			time.Sleep(time.Second * 3)
+			time.Sleep(time.Second * 5)
 			err := orionDaemon.Start()
 			if err != nil {
 				log.Error().Err(err).Msgf("failed to bring up orion client daemon")
