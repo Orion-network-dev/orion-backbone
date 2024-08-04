@@ -43,6 +43,10 @@ func (c *Session) Dispose() {
 }
 
 func (c *Session) DisposeInstant() {
+	if c.cancelCancelation != nil {
+		c.cancelCancelation <- struct{}{}
+	}
+
 	meta := c.meta
 	// we should dispose the client
 	c.cancel()
