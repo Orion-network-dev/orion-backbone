@@ -29,11 +29,12 @@ func (c *Session) Dispose() {
 		c.cancelCancelation = make(chan struct{})
 		// wait 2 minutes before ending a session
 		go func() {
-			log.Debug().Msg("starting to tick for session expitation")
+			log.Debug().Uint32("uid", c.meta.memberId).Msg("starting to tick for session expitation")
 			timer := time.NewTimer(time.Second * 20)
 
 			select {
 			case <-c.cancelCancelation:
+				c.cancelCancelation = nil
 				return
 			case <-timer.C:
 				c.cancelCancelation = nil
