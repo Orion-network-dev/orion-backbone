@@ -16,7 +16,7 @@ type Session struct {
 	sessionManager       *SessionManager
 
 	streamSend *broadcast.Relay[*proto.RPCServerEvent]
-	ctx        context.Context
+	Context    context.Context
 	cancel     context.CancelFunc
 	sID        string
 
@@ -81,7 +81,7 @@ func New(
 		invitationsResponses: make(chan *proto.MemberConnectResponseEvent),
 		sessionManager:       sessionManager,
 		streamSend:           broadcast.NewRelay[*proto.RPCServerEvent](),
-		ctx:                  ctx,
+		Context:              ctx,
 		cancel:               cancel,
 	}
 

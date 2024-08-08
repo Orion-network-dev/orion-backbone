@@ -100,7 +100,7 @@ func (c *Session) eventListeners() {
 					},
 				})
 			}
-		case <-c.ctx.Done():
+		case <-c.Context.Done():
 			return
 		}
 	}

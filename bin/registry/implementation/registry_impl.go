@@ -138,6 +138,8 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibeEvent proto.Regi
 			if err != nil {
 				return err
 			}
+		case <-currentSession.Context.Done():
+			return currentSession.Context.Err()
 		case <-subscibeEvent.Context().Done():
 			return subscibeEvent.Context().Err()
 		}
