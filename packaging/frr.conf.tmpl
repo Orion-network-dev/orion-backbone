@@ -46,6 +46,7 @@ ip prefix-list orion seq 30 permit 232.30.0.0/16 le 32 ge 24
 ip route 10.30.0.0/16 blackhole
 ip route 172.30.0.0/15 blackhole
 ip route 192.168.255.0/24 blackhole
+ip route 10.30.{{ .OrionId }}.0/24 lo
 !
 line vty
 !
