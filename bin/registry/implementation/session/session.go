@@ -36,6 +36,7 @@ func (c *Session) Dispose() {
 			case <-c.cancelCancelation:
 				return
 			case <-timer.C:
+				c.cancelCancelation = nil
 				c.DisposeInstant()
 			}
 		}()

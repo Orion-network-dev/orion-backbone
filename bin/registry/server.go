@@ -57,12 +57,13 @@ func main() {
 	s := grpc.NewServer(
 		grpc.Creds(cred),
 		grpc.KeepaliveParams(keepalive.ServerParameters{
-			Time:    time.Second * 20,
-			Timeout: time.Second * 1,
+			Time:              time.Second * 20,
+			Timeout:           time.Second * 1,
+			MaxConnectionIdle: time.Second * 20,
 		}),
 		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
 			MinTime:             time.Second * 15,
-			PermitWithoutStream: true,
+			PermitWithoutStream: false,
 		}),
 	)
 

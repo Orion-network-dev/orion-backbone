@@ -55,7 +55,7 @@ func main() {
 		grpc.WithKeepaliveParams(keepalive.ClientParameters{
 			Time:                time.Second * 20,
 			Timeout:             time.Second * 1,
-			PermitWithoutStream: true,
+			PermitWithoutStream: false,
 		}),
 	)
 	if err != nil {
