@@ -43,6 +43,9 @@ ip prefix-list orion seq 10 permit 172.30.0.0/15 le 31 ge 31
 ip prefix-list orion seq 11 permit 192.168.255.0/24 le 32 ge 32
 ip prefix-list orion seq 20 permit 10.30.0.0/16 le 32 ge 24
 ip prefix-list orion seq 30 permit 232.30.0.0/16 le 32 ge 24
+ip route 10.30.0.0/16 blackhole
+ip route 172.30.0.0/15 blackhole
+ip route 192.168.255.0/24 blackhole
 !
 line vty
 !
