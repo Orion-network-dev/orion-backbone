@@ -61,7 +61,7 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibeEvent proto.Regi
 
 	select {
 	case clientEvent := <-eventsStream:
-		if event := clientEvent.GetInitialize(); event != nil && currentSession == nil {
+		if event := clientEvent.GetInitialize(); event != nil {
 
 			// check session_id
 			var newSession *session.Session
