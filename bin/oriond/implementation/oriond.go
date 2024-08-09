@@ -55,7 +55,7 @@ func NewOrionClientDaemon(
 		friendlyName:       *friendlyName,
 		ParentCtx:          Context,
 		establishedStream:  broadcast.NewRelay[uint32](),
-		tunnels:            make(map[uint32]*link.PeerLink),
+		tunnels:            map[uint32]*link.PeerLink{},
 		tunnelsLock:        &sync.RWMutex{},
 	}
 

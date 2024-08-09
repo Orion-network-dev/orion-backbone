@@ -28,7 +28,7 @@ func (c *OrionClientDaemon) handleWantsToConnect(
 		log.Error().
 			Uint32("peer-id", event.SourcePeerId).
 			Msg("received a want to connect event for a already-initialized event")
-		return
+		c.tunnels[event.SourcePeerId].Dispose()
 	}
 
 	// It's our job to generate the pre-shared key information

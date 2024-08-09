@@ -95,25 +95,6 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibeEvent proto.Regi
 
 			// Set the session
 			currentSession = newSession
-			// we start a routine to listen to the send stream
-			go func() {
-				listener := currentSession.Ch()
-				defer listener.Close()
-				for {
-					select {
-					case send := <-listener.Ch():
-						err := subscibeEvent.Send(send)
-
-						if err != nil {
-							return
-						}
-
-					case <-subscibeEvent.Context().Done():
-						return
-					}
-				}
-			}()
-
 			// Start the disposal when exiting the routine
 			defer currentSession.Dispose()
 		}
