@@ -20,6 +20,7 @@ import (
 )
 
 var (
+	enable_prof    = flag.Bool("enable-pprof", false, "enable pprof for debugging")
 	debug          = flag.Bool("debug", false, "change the log level to debug")
 	registryServer = flag.String("registry-server", "reg.orionet.re", "the address of the registry server")
 	pprof          = flag.String("debug-pprof", "0.0.0.0:6060", "")
@@ -34,10 +35,13 @@ func main() {
 	// Default level for this example is info, unless debug flag is present
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	if *debug {
+	if *enable_prof {
 		go func() {
 			fmt.Println(http.ListenAndServe(*pprof, nil))
 		}()
+	}
+	if *debug {
+
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 
