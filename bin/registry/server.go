@@ -3,8 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"net"
-	"os"
 	"time"
 
 	"net/http"
@@ -14,6 +14,7 @@ import (
 	"github.com/MatthieuCoder/OrionV3/internal"
 	"github.com/MatthieuCoder/OrionV3/internal/proto"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/journald"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
@@ -21,6 +22,7 @@ import (
 
 var (
 	pprof         = flag.String("debug-pprof", "0.0.0.0:6060", "")
+	enable_prof   = flag.Bool("enble-pprof", false, "enable pprof for debugging")
 	debug         = flag.Bool("debug", false, "change the log level to debug")
 	listeningHost = flag.String("listen-host", "127.0.0.1:6443", "the port the server will listen on")
 )
@@ -29,14 +31,19 @@ func main() {
 	// Setup logging
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	flag.Parse()
-
+	journaldWriter := journald.NewJournalDWriter()
+	log.Logger = log.Output(io.MultiWriter(
+		journaldWriter,
+	))
 	// Default level for this example is info, unless debug flag is present
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	if *debug {
+	if *enable_prof {
 		go func() {
 			fmt.Println(http.ListenAndServe(*pprof, nil))
 		}()
-		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	}
+	if *debug {
+
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 
