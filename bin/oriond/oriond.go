@@ -41,7 +41,6 @@ func main() {
 		}()
 	}
 	if *debug {
-
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 
