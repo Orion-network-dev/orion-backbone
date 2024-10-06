@@ -5,6 +5,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/MatthieuCoder/OrionV3/internal"
 	"github.com/go-ping/ping"
 	"github.com/rs/zerolog/log"
 )
@@ -30,11 +31,14 @@ func (c *PeerLink) updateWeights() error {
 	latency := stats.AvgRtt
 	if stats.PacketLoss > 0 {
 		log.Debug().Msg("ping failed")
+
+		// todo: termination of connection
+
 		latency = time.Hour * 24 * 7
 	}
 
 	log.Debug().Dur("ping-reponse", latency).Msg("ping(ed) peer")
-	newPeer := c.frrManager.GetPeer(c.otherID)
+	newPeer := c.frrManager.GetPeer(internal.IdentityFromRouter(c.other))
 	if newPeer == nil {
 		return fmt.Errorf("peer is not existant")
 	}
@@ -49,7 +53,7 @@ func (c *PeerLink) updateWeights() error {
 			0,
 		),
 	))
-	c.frrManager.UpdatePeer(c.otherID, newPeer)
+	c.frrManager.UpdatePeer(internal.IdentityFromRouter(c.other), newPeer)
 
 	err = c.frrManager.Update()
 	if err != nil {
@@ -69,14 +73,14 @@ func (c *PeerLink) backgroundTask() {
 			if err := c.updateWeights(); err != nil {
 				log.Error().
 					Err(err).
-					Uint32("peer-id", c.otherID).
+					Uint64("peer-id", internal.IdentityFromRouter(c.other)).
 					Msgf("failed to adjust the weight")
 			}
 
 		case <-c.ctx.Done():
 			log.Error().
 				Err(c.ctx.Err()).
-				Uint32("peer-id", c.otherID).
+				Uint64("peer-id", internal.IdentityFromRouter(c.other)).
 				Msgf("ending the background task")
 			return
 		}

@@ -14,19 +14,18 @@ import (
 )
 
 // Calculate the nonce bytes
-func CalculateNonceBytes(MemberId uint32, FriendlyName string, time int64) []byte {
-	return sha512.New().Sum([]byte(fmt.Sprintf("%d:%s:%d", MemberId, FriendlyName, time)))
+func CalculateNonceBytes(Router *proto.Router, time int64) []byte {
+	return sha512.New().Sum([]byte(fmt.Sprintf("%d:%s:%d:%d", Router.RouterId, Router.FriendlyName, Router.RouterId, time)))
 }
 
 // Used to calculate the nonce and sign it
 func CalculateNonce(
-	MemberId uint32,
-	FriendlyName string,
+	Router *proto.Router,
 	Certificate []byte,
 	PrivateKey *ecdsa.PrivateKey,
-) (*proto.InitializeRequest, error) {
+) (*proto.RouterLogin, error) {
 	time := time.Now().Unix()
-	authHash := CalculateNonceBytes(MemberId, FriendlyName, time)
+	authHash := CalculateNonceBytes(Router, time)
 
 	signed, err := ecdsa.SignASN1(rand.Reader, PrivateKey, authHash)
 
@@ -35,10 +34,9 @@ func CalculateNonce(
 		return nil, err
 	}
 
-	return &proto.InitializeRequest{
-		FriendlyName:    FriendlyName,
+	return &proto.RouterLogin{
+		Identity:        Router,
 		TimestampSigned: time,
-		MemberId:        MemberId,
 		Certificate:     Certificate,
 		Signed:          signed,
 	}, nil

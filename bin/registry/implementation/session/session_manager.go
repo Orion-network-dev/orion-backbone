@@ -7,14 +7,14 @@ import (
 )
 
 type SessionManager struct {
-	sessions      map[uint32]*Session
-	sessionIdsMap map[string]*uint32
+	sessions      map[uint64]*Session
+	sessionIdsMap map[string]*uint64
 
-	newClients      *broadcast.Relay[*proto.NewMemberEvent]
-	disposedClients *broadcast.Relay[*proto.MemberDisconnectedEvent]
+	newClients      *broadcast.Relay[*proto.RouterConnectedEvent]
+	disposedClients *broadcast.Relay[*proto.RouterDisconnectedEvent]
 }
 
-func (c *SessionManager) GetSession(session uint32) *Session {
+func (c *SessionManager) GetSession(session uint64) *Session {
 	return c.sessions[session]
 }
 
@@ -29,9 +29,9 @@ func (c *SessionManager) GetSessionFromSessionId(id string) *Session {
 
 func NewSessionManager() *SessionManager {
 	return &SessionManager{
-		sessions:        map[uint32]*Session{},
-		sessionIdsMap:   make(map[string]*uint32),
-		newClients:      broadcast.NewRelay[*proto.NewMemberEvent](),
-		disposedClients: broadcast.NewRelay[*proto.MemberDisconnectedEvent](),
+		sessions:        map[uint64]*Session{},
+		sessionIdsMap:   make(map[string]*uint64),
+		newClients:      broadcast.NewRelay[*proto.RouterConnectedEvent](),
+		disposedClients: broadcast.NewRelay[*proto.RouterDisconnectedEvent](),
 	}
 }

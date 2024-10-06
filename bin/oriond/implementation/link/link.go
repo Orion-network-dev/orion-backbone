@@ -7,6 +7,7 @@ import (
 
 	"github.com/MatthieuCoder/OrionV3/bin/oriond/implementation/frr"
 	"github.com/MatthieuCoder/OrionV3/internal"
+	"github.com/MatthieuCoder/OrionV3/internal/proto"
 	"github.com/rs/zerolog/log"
 	"github.com/vishvananda/netlink"
 	"golang.zx2c4.com/wireguard/wgctrl"
@@ -20,22 +21,22 @@ type PeerLink struct {
 	wgClient        *wgctrl.Client
 
 	publicKey   wgtypes.Key
-	selfIP      *net.IPNet
+	self        *proto.Router
+	other       *proto.Router
 	otherIP     *net.IPNet
-	selfID      uint32
-	otherID     uint32
+	selfIP      *net.IPNet
 	cancel      context.CancelFunc
 	initialized bool
 }
 
 func NewPeerLink(
 	parentCtx context.Context,
-	selfID uint32,
-	otherID uint32,
+	self *proto.Router,
+	other *proto.Router,
 	wgClient *wgctrl.Client,
 	frrManager *frr.FrrConfigManager,
 ) (*PeerLink, error) {
-	selfIP, otherIP, err := internal.GetSelfAddress(selfID, otherID)
+	selfIP, otherIP, err := internal.GetSelfAddress(self, other)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to compute the self address")
 		return nil, err
@@ -46,7 +47,7 @@ func NewPeerLink(
 	}
 
 	tunnel, err := internal.NewWireguardInterface(wgClient, &netlink.LinkAttrs{
-		Name:  fmt.Sprintf("orion%d", otherID),
+		Name:  fmt.Sprintf("orion%d%d", other.MemberId, other.RouterId),
 		Group: 30,
 	}, wgtypes.Config{
 		PrivateKey:   &privatekey,
@@ -68,8 +69,8 @@ func NewPeerLink(
 		frrManager:      frrManager,
 		wireguardTunnel: tunnel,
 		wgClient:        wgClient,
-		selfID:          selfID,
-		otherID:         otherID,
+		self:            self,
+		other:           other,
 		selfIP:          selfIP,
 		otherIP:         otherIP,
 		publicKey:       privatekey.PublicKey(),
@@ -88,6 +89,6 @@ func (c *PeerLink) Initialized() bool {
 	return c.initialized
 }
 
-func (c *PeerLink) RemoteID() uint32 {
-	return c.otherID
+func (c *PeerLink) RemoteID() *proto.Router {
+	return c.other
 }

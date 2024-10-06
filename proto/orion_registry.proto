@@ -4,62 +4,108 @@ option go_package = ".;proto";
 
 service Registry {
   // Subscribe to the event stream
-  rpc SubscribeToStream(stream RPCClientEvent) returns(stream RPCServerEvent);
+  rpc SubscribeToStream(stream PeersToServer) returns(stream ServerToPeers);
 }
 
-message NewMemberEvent {
+message Router {
+  // The friendly name of the member - This is usually the version of the name of the member
   string friendly_name = 1;
-  uint32 peer_id = 2;
+  // This is the id of the member, this identifies the user maintaining this AS.
+  uint32 member_id = 2;
+  // This is the router_id in this AS, this is used to direve multi-exit descriptors
+  uint32 router_id = 3;
 }
 
-message MemberDisconnectedEvent {
-  string friendly_name = 1;
-  uint32 peer_id = 2;
+message RoutingInformation {
+  Router source = 1;
+  Router destination = 2;
 }
 
-message MemberConnectEvent {
+// Sent when a new network router joins
+// Emitted by the registry server to all routers
+message RouterConnectedEvent {
+  Router router = 1;
+}
+
+// Sent when a connection to the registry is interrupted
+// Emitted by the registry server to all members
+message RouterDisconnectedEvent {
+  Router router = 1;
+}
+
+// Send by a member once a connection is wanted
+// This is usually triggered by a NewMemberEvent or following a Disconnect event because of a healthcheck issue
+// Emitted by a member
+message RouterPeerToPeerInitiate {
   string endpoint_addr = 1;
   uint32 endpoint_port = 2;
   bytes public_key = 3;
   string friendly_name = 5;
-  uint32 destination_peer_id = 6;
-  uint32 source_peer_id = 7;
+  RoutingInformation routing = 6;
 }
 
-message MemberConnectResponseEvent {
+// Sent by a member as a reponse of "RouterPeerToPeerInitiate"
+// it contains the remaining 
+message RouterPeerToPeerInitiateACK {
   string endpoint_addr = 1;
   uint32 endpoint_port = 2;
   bytes public_key = 3;
   string friendly_name = 4;
-  uint32 destination_peer_id = 5;
-  bytes preshared_key = 7;
-  uint32 source_peer_id = 6;
+  bytes preshared_key = 5;
+  RoutingInformation routing = 6;
 }
 
-message RPCServerEvent {
+// Sent by a member to terminate a peer to peer connection
+message RouterPeerToPeerTerminate {
+  RoutingInformation routing = 1;
+  string reason = 2;
+}
+// Sent to confirm the deletion of a peer to peer connection
+message RouterPeerToPeerTerminateACK {
+  RoutingInformation routing = 1;
+}
+
+message SessionIDAssigned {
+  string session_id = 1;
+}
+
+message RouterLogin {
+  Router identity = 1;
+  int64 timestamp_signed = 2;
+  bytes signed = 3;
+  bytes certificate = 4;
+  string session_id = 5;
+  bool reconnect = 6;
+}
+
+
+message ServerToPeers {
   oneof event {
-    NewMemberEvent new_member = 1;
-    MemberDisconnectedEvent disconnected_member = 2;
-    MemberConnectEvent member_connect = 3;
-    MemberConnectResponseEvent member_connect_response = 4;
-    string session_id = 5;
+    // Registry sent events
+    RouterConnectedEvent connected = 1;
+    RouterDisconnectedEvent disconnected = 2;
+    SessionIDAssigned session_id = 3;
+
+    // Peer to peer link init
+    RouterPeerToPeerInitiate initiate = 4;
+    RouterPeerToPeerInitiateACK initiate_ack = 5;
+    
+    // Peer to peer link terminate
+    RouterPeerToPeerTerminate terminate = 6;
+    RouterPeerToPeerTerminateACK terminate_ack = 7;
   }
 }
 
-message InitializeRequest {
-  string friendly_name = 1;
-  int64 timestamp_signed = 2;
-  bytes signed = 3;
-  uint32 member_id = 4;
-  bytes certificate = 5;
-  string session_id = 6;
-  bool reconnect = 7;
-}
 
-message RPCClientEvent {
+message PeersToServer {
   oneof event {
-    InitializeRequest initialize = 1;
-    MemberConnectEvent connect = 2;
-    MemberConnectResponseEvent connect_response = 3;
+    // Send to initialize the session
+    RouterLogin login = 1;
+    
+    RouterPeerToPeerInitiate initiate = 2;
+    RouterPeerToPeerInitiateACK initiate_ack = 3;
+
+    RouterPeerToPeerTerminate terminate = 4;
+    RouterPeerToPeerTerminateACK terminate_ack = 5;
   }
 }

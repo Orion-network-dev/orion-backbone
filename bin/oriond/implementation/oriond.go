@@ -7,6 +7,7 @@ import (
 
 	"github.com/MatthieuCoder/OrionV3/bin/oriond/implementation/frr"
 	"github.com/MatthieuCoder/OrionV3/bin/oriond/implementation/link"
+	"github.com/MatthieuCoder/OrionV3/internal"
 	"github.com/MatthieuCoder/OrionV3/internal/proto"
 	"github.com/rs/zerolog/log"
 	"github.com/teivah/broadcast"
@@ -20,7 +21,7 @@ var (
 
 type OrionClientDaemon struct {
 	// Metadata regarding the client
-	memberId     uint32
+	identity     *proto.Router
 	friendlyName string
 	asn          uint32
 	sID          string
@@ -34,14 +35,14 @@ type OrionClientDaemon struct {
 	holePunchingClient proto.HolePunchingServiceClient
 	registryStream     proto.Registry_SubscribeToStreamClient
 
-	tunnels     map[uint32]*link.PeerLink
+	tunnels     map[uint64]*link.PeerLink
 	tunnelsLock *sync.RWMutex
 
 	// Runtime information
 	Context           context.Context
 	ParentCtx         context.Context
 	ctxCancel         context.CancelFunc
-	establishedStream *broadcast.Relay[uint32]
+	establishedStream *broadcast.Relay[uint64]
 }
 
 // Creates and initializes a new Orion client
@@ -54,8 +55,8 @@ func NewOrionClientDaemon(
 		holePunchingClient: proto.NewHolePunchingServiceClient(ClientConnection),
 		friendlyName:       *friendlyName,
 		ParentCtx:          Context,
-		establishedStream:  broadcast.NewRelay[uint32](),
-		tunnels:            map[uint32]*link.PeerLink{},
+		establishedStream:  broadcast.NewRelay[uint64](),
+		tunnels:            map[uint64]*link.PeerLink{},
 		tunnelsLock:        &sync.RWMutex{},
 	}
 
@@ -72,7 +73,7 @@ func NewOrionClientDaemon(
 	}
 
 	// Initializing the FRR config manager, which is used to change the bgp configuration
-	if frrManager, err := frr.NewFrrConfigManager(orionClient.asn, orionClient.memberId); err == nil {
+	if frrManager, err := frr.NewFrrConfigManager(orionClient.asn, orionClient.identity); err == nil {
 		orionClient.frrManager = frrManager
 	} else {
 		return nil, err
@@ -89,7 +90,7 @@ func (c *OrionClientDaemon) Dispose() {
 		if err != nil {
 			log.Error().
 				Err(err).
-				Uint32("peer-id", tunnel.RemoteID()).
+				Uint64("peer-id", internal.IdentityFromRouter(tunnel.RemoteID())).
 				Msg("failed to dispose the client")
 		}
 	}

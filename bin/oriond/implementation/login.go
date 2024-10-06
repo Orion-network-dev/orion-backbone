@@ -57,8 +57,10 @@ func (c *OrionClientDaemon) login() error {
 		return err
 	}
 
+	identity := proto.Router{}
+
 	// We compute the nonce with all the data
-	nonce, err := internal.CalculateNonce(c.memberId, *friendlyName, certificateFile, ecdsaKey)
+	nonce, err := internal.CalculateNonce(&identity, certificateFile, ecdsaKey)
 	if err != nil {
 		err = fmt.Errorf("couldn't compute the nonce given from the given information about this node")
 		log.Error().
@@ -73,9 +75,10 @@ func (c *OrionClientDaemon) login() error {
 	}
 
 	// We send the login-initialize information to the server
-	if err = c.registryStream.Send(&proto.RPCClientEvent{
-		Event: &proto.RPCClientEvent_Initialize{
-			Initialize: nonce,
+	if err = c.registryStream.Send(&proto.PeersToServer{
+		Event: &proto.PeersToServer_Login{
+			// TODO: More data for login
+			Login: &proto.RouterLogin{},
 		},
 	}); err != nil {
 		log.Error().

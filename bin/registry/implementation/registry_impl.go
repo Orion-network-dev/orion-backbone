@@ -45,7 +45,7 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibeEvent proto.Regi
 	// Used to store the current session
 	var currentSession *session.Session
 	// Used to handle the events
-	eventsStream := make(chan *proto.RPCClientEvent)
+	eventsStream := make(chan *proto.PeersToServer)
 
 	// Simple subroutine to handle end various events
 	go func() {
@@ -61,13 +61,13 @@ func (r *OrionRegistryImplementation) SubscribeToStream(subscibeEvent proto.Regi
 
 	select {
 	case clientEvent := <-eventsStream:
-		if event := clientEvent.GetInitialize(); event != nil {
+		if event := clientEvent.GetLogin(); event != nil {
 
 			// check session_id
 			var newSession *session.Session
 
 			if !event.Reconnect {
-				if session := r.sessionManager.GetSession(event.MemberId); session != nil {
+				if session := r.sessionManager.GetSession(internal.IdentityFromRouter(event.Identity)); session != nil {
 					log.Info().Msg("Disposing old session for re-login")
 					session.DisposeInstant()
 				}
