@@ -6,15 +6,20 @@ import (
 	"time"
 
 	"github.com/MatthieuCoder/OrionV3/bin/oriond/implementation/frr"
+	"github.com/MatthieuCoder/OrionV3/internal"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 var (
 	keepAlive = flag.Duration("wireguard-keepalive", time.Second*60, "")
 
-	allIPRanges = net.IPNet{
+	allIPv4Ranges = net.IPNet{
 		IP:   net.IPv4(0, 0, 0, 0),
 		Mask: net.CIDRMask(0, 32),
+	}
+	allIPv6Ranges = net.IPNet{
+		IP:   net.ParseIP("::"),
+		Mask: net.CIDRMask(0, 128),
 	}
 )
 
@@ -38,7 +43,8 @@ func (c *PeerLink) InitializePeerConnection(
 				PublicKey:                   PublicKey,
 				PersistentKeepaliveInterval: keepAlive,
 				AllowedIPs: []net.IPNet{
-					allIPRanges,
+					allIPv4Ranges,
+					allIPv6Ranges,
 				},
 			},
 		},
@@ -53,8 +59,8 @@ func (c *PeerLink) InitializePeerConnection(
 	}
 
 	// We register our peering to frr
-	c.frrManager.UpdatePeer(c.otherID, &frr.Peer{
-		ASN:     c.otherID + 64511,
+	c.frrManager.UpdatePeer(internal.IdentityFromRouter(c.other), &frr.Peer{
+		ASN:     c.other.MemberId + 64511,
 		Address: c.otherIP.IP.String(),
 		Weight:  200,
 	})

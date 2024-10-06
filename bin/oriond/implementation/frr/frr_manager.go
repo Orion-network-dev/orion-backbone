@@ -8,6 +8,7 @@ import (
 	"sync"
 	"text/template"
 
+	"github.com/MatthieuCoder/OrionV3/internal/proto"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -42,7 +43,7 @@ type tmplContext struct {
 
 // Struct used to interact and issue the FRR configuration file updates.
 type FrrConfigManager struct {
-	peers     map[uint32]*Peer
+	peers     map[uint64]*Peer
 	selfASN   uint32
 	OrionId   uint32
 	template  *template.Template
@@ -59,15 +60,15 @@ func loadTmpl() (*template.Template, error) {
 }
 
 // Function used to create a config-manager instance.
-func NewFrrConfigManager(ASN uint32, OrionId uint32) (*FrrConfigManager, error) {
+func NewFrrConfigManager(ASN uint32, OrionId *proto.Router) (*FrrConfigManager, error) {
 	tmpl, err := loadTmpl()
 	if err != nil {
 		return nil, err
 	}
 	config := &FrrConfigManager{
-		peers:     map[uint32]*Peer{},
+		peers:     map[uint64]*Peer{},
 		selfASN:   ASN,
-		OrionId:   OrionId,
+		OrionId:   OrionId.MemberId,
 		template:  tmpl,
 		peersLock: &sync.RWMutex{},
 	}
@@ -159,13 +160,13 @@ func (c *FrrConfigManager) Update() error {
 	return nil
 }
 
-func (c *FrrConfigManager) UpdatePeer(id uint32, peer *Peer) {
+func (c *FrrConfigManager) UpdatePeer(id uint64, peer *Peer) {
 	// Locks the peer
 	c.peersLock.Lock()
 	defer c.peersLock.Unlock()
 	c.peers[id] = peer
 }
 
-func (c *FrrConfigManager) GetPeer(id uint32) *Peer {
+func (c *FrrConfigManager) GetPeer(id uint64) *Peer {
 	return c.peers[id]
 }

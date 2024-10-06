@@ -5,44 +5,45 @@ import (
 	"time"
 
 	"github.com/MatthieuCoder/OrionV3/bin/oriond/implementation/link"
+	"github.com/MatthieuCoder/OrionV3/internal"
 	"github.com/MatthieuCoder/OrionV3/internal/proto"
 	"github.com/rs/zerolog/log"
 )
 
-func (c *OrionClientDaemon) handleNewClient(
+func (c *OrionClientDaemon) handleNewRouter(
 	ctx context.Context,
-	event *proto.NewMemberEvent,
+	event *proto.RouterConnectedEvent,
 ) {
 	c.tunnelsLock.Lock()
 	defer c.tunnelsLock.Unlock()
-
+	peerID := internal.IdentityFromRouter(event.Router)
 	log.Info().
-		Uint32("peer-id", event.PeerId).
+		Uint64("peer-id", peerID).
 		Msg("Initiating a new link")
 
-	if c.tunnels[event.PeerId] != nil {
+	if c.tunnels[peerID] != nil {
 		log.Error().
-			Uint32("peer-id", event.PeerId).
+			Uint64("peer-id", peerID).
 			Msg("received a new_client event for a already-initialized event")
 		return
 	}
 
 	peer, err := link.NewPeerLink(
 		c.Context,
-		c.memberId,
-		event.PeerId,
+		c.identity,
+		event.Router,
 		c.wgClient,
 		c.frrManager,
 	)
 	if err != nil {
 		log.Error().
 			Err(err).
-			Uint32("peer-id", event.PeerId).
+			Uint64("peer-id", peerID).
 			Msgf("failed to initialize the peer object")
 		return
 	}
 	// We save the peer in the tunnels map
-	c.tunnels[event.PeerId] = peer
+	c.tunnels[peerID] = peer
 	publickey := peer.PublicKey()
 
 	// We initialize a one minte context for getting the hole-punching details
@@ -55,29 +56,31 @@ func (c *OrionClientDaemon) handleNewClient(
 	if err != nil {
 		log.Error().
 			Err(err).
-			Uint32("peer-id", event.PeerId).
+			Uint64("peer-id", peerID).
 			Msg("failed to hole-punch the interface")
 		peer.Dispose()
 		return
 	}
 
 	// Inform the peer that we re ready for connection
-	err = c.registryStream.Send(&proto.RPCClientEvent{
-		Event: &proto.RPCClientEvent_Connect{
-			Connect: &proto.MemberConnectEvent{
-				EndpointAddr:      holePunching.ClientEndpointAddr,
-				EndpointPort:      holePunching.ClientEndpointPort,
-				PublicKey:         publickey[:],
-				FriendlyName:      *friendlyName,
-				DestinationPeerId: event.PeerId,
-				SourcePeerId:      c.memberId,
+	err = c.registryStream.Send(&proto.PeersToServer{
+		Event: &proto.PeersToServer_Initiate{
+			Initiate: &proto.RouterPeerToPeerInitiate{
+				EndpointAddr: holePunching.ClientEndpointAddr,
+				EndpointPort: holePunching.ClientEndpointPort,
+				PublicKey:    publickey[:],
+				FriendlyName: *friendlyName,
+				Routing: &proto.RoutingInformation{
+					Destination: event.Router,
+					Source:      c.identity,
+				},
 			},
 		},
 	})
 	if err != nil {
 		log.Error().
 			Err(err).
-			Uint32("peer-id", event.PeerId).
+			Uint64("peer-id", peerID).
 			Msgf("couldn't write the initialization message to the gRPC connection")
 		peer.Dispose()
 		return
@@ -91,14 +94,14 @@ func (c *OrionClientDaemon) handleNewClient(
 			select {
 			case establishedStreamID := <-establshed_stream.Ch():
 				// Our connection got succesfully established
-				if establishedStreamID == event.PeerId {
+				if establishedStreamID == peerID {
 					return
 				}
 			case <-waitingForResponse.Done():
 				// timeout reached while establishing the peer connection
 				log.Error().
 					Err(waitingForResponse.Err()).
-					Uint32("peer-id", event.PeerId).
+					Uint64("peer-id", peerID).
 					Msgf("timeout exceeded while waiting for a response from the peer")
 				peer.Dispose()
 				return

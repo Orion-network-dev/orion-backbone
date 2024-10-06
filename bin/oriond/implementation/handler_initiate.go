@@ -6,29 +6,36 @@ import (
 	"time"
 
 	"github.com/MatthieuCoder/OrionV3/bin/oriond/implementation/link"
+	"github.com/MatthieuCoder/OrionV3/internal"
 	"github.com/MatthieuCoder/OrionV3/internal/proto"
 	"github.com/rs/zerolog/log"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-func (c *OrionClientDaemon) handleWantsToConnect(
+func (c *OrionClientDaemon) handleInitiate(
 	ctx context.Context,
-	event *proto.MemberConnectEvent,
+	event *proto.RouterPeerToPeerInitiate,
 ) {
-	// We ignore requests that are coming from ourself
-	if event.DestinationPeerId != c.memberId || event.SourcePeerId == c.memberId {
+
+	source := internal.IdentityFromRouter(event.Routing.Source)
+	destination := internal.IdentityFromRouter(event.Routing.Destination)
+	self := internal.IdentityFromRouter(c.identity)
+
+	// We ignore requests that are coming from ourself,
+	if destination != self ||
+		source == self {
 		log.Error().
-			Uint32("peer-id", event.SourcePeerId).
+			Uint64("peer-id", source).
 			Msg("received a message not destinated to this host")
 		return
 	}
 	c.tunnelsLock.Lock()
 	defer c.tunnelsLock.Unlock()
-	if c.tunnels[event.SourcePeerId] != nil {
+	if c.tunnels[source] != nil {
 		log.Error().
-			Uint32("peer-id", event.SourcePeerId).
+			Uint64("peer-id", source).
 			Msg("received a want to connect event for a already-initialized event")
-		c.tunnels[event.SourcePeerId].Dispose()
+		c.tunnels[source].Dispose()
 	}
 
 	// It's our job to generate the pre-shared key information
@@ -37,7 +44,7 @@ func (c *OrionClientDaemon) handleWantsToConnect(
 	if err != nil {
 		log.Error().
 			Err(err).
-			Uint32("peer-id", event.SourcePeerId).
+			Uint64("peer-id", source).
 			Msg("failed to send the message to the server")
 		return
 	}
@@ -45,21 +52,21 @@ func (c *OrionClientDaemon) handleWantsToConnect(
 	// We initialize a new peer link object to hold this new link context
 	peer, err := link.NewPeerLink(
 		c.Context,
-		c.memberId,
-		event.SourcePeerId,
+		c.identity,
+		event.Routing.Source,
 		c.wgClient,
 		c.frrManager,
 	)
 	if err != nil {
 		log.Error().
 			Err(err).
-			Uint32("peer-id", event.SourcePeerId).
+			Uint64("peer-id", source).
 			Msg("failed to initialize the peer link object")
 		return
 	}
 	publicKey := peer.PublicKey()
 
-	c.tunnels[event.SourcePeerId] = peer
+	c.tunnels[source] = peer
 
 	// We initialize a one minte context for getting the hole-punching details
 	holePunchingContext, cancel := context.WithTimeout(ctx, time.Minute)
@@ -73,7 +80,7 @@ func (c *OrionClientDaemon) handleWantsToConnect(
 	if err != nil {
 		log.Error().
 			Err(err).
-			Uint32("peer-id", event.SourcePeerId).
+			Uint64("peer-id", source).
 			Msg("failed to hole-punch the interface")
 		peer.Dispose()
 		return
@@ -91,29 +98,31 @@ func (c *OrionClientDaemon) handleWantsToConnect(
 	if err != nil {
 		log.Error().
 			Err(err).
-			Uint32("peer-id", event.SourcePeerId).
+			Uint64("peer-id", source).
 			Msg("failed to initialize the connection to the peer")
 		peer.Dispose()
 		return
 	}
 
-	err = c.registryStream.Send(&proto.RPCClientEvent{
-		Event: &proto.RPCClientEvent_ConnectResponse{
-			ConnectResponse: &proto.MemberConnectResponseEvent{
-				EndpointAddr:      holePunching.ClientEndpointAddr,
-				EndpointPort:      holePunching.ClientEndpointPort,
-				PublicKey:         publicKey[:],
-				FriendlyName:      *friendlyName,
-				SourcePeerId:      c.memberId,
-				DestinationPeerId: event.SourcePeerId,
-				PresharedKey:      preshared[:],
+	err = c.registryStream.Send(&proto.PeersToServer{
+		Event: &proto.PeersToServer_InitiateAck{
+			InitiateAck: &proto.RouterPeerToPeerInitiateACK{
+				EndpointAddr: holePunching.ClientEndpointAddr,
+				EndpointPort: holePunching.ClientEndpointPort,
+				PublicKey:    publicKey[:],
+				FriendlyName: *friendlyName,
+				PresharedKey: preshared[:],
+				Routing: &proto.RoutingInformation{
+					Source:      c.identity,
+					Destination: event.Routing.Source,
+				},
 			},
 		},
 	})
 	if err != nil {
 		log.Error().
 			Err(err).
-			Uint32("peer-id", event.SourcePeerId).
+			Uint64("peer-id", source).
 			Msg("failed to send the initialization response to the remote peer")
 		peer.Dispose()
 		return

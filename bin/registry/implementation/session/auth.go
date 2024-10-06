@@ -28,7 +28,7 @@ func generateRandomString(n int) (string, error) {
 }
 
 func (c *Session) Authenticate(
-	Event *proto.InitializeRequest,
+	Event *proto.RouterLogin,
 	RootCertPool *x509.CertPool,
 ) error {
 	// Verify that the date only has a variation inferior to 2s
@@ -60,7 +60,7 @@ func (c *Session) Authenticate(
 		return err
 	}
 
-	identifier := fmt.Sprintf("%d.member.orionet.re", Event.MemberId)
+	identifier := fmt.Sprintf("%d.member.orionet.re", Event.Identity.MemberId)
 
 	// Verifying the certificate validity using the root certificate and user-provided
 	// intermediary certificates. This checks that the certificate is signed and allowed to use
@@ -86,7 +86,7 @@ func (c *Session) Authenticate(
 	}
 
 	// Calculate the hash given in order to check the client signature
-	nonce := internal.CalculateNonceBytes(Event.MemberId, Event.FriendlyName, Event.TimestampSigned)
+	nonce := internal.CalculateNonceBytes(Event.Identity, Event.TimestampSigned)
 
 	// Verify that the user-provided data matches the signature created using the client root key
 	successful := ecdsa.VerifyASN1(cert.PublicKey.(*ecdsa.PublicKey), nonce, Event.Signed)
@@ -105,17 +105,17 @@ func (c *Session) Authenticate(
 
 	log.Debug().Msg("client created")
 	// registering in the manager
-	c.meta = &SessionMeta{
-		memberId:     Event.MemberId,
-		friendlyName: Event.FriendlyName,
-	}
-	c.sessionManager.sessions[Event.MemberId] = c
+	c.meta = Event.Identity
+	c.sessionManager.sessions[internal.IdentityFromRouter(Event.Identity)] = c
 
 	log.Debug().Msg("broadcasting the new client message")
 	c.sessionManager.newClients.Notify(
-		&proto.NewMemberEvent{
-			FriendlyName: Event.FriendlyName,
-			PeerId:       Event.MemberId,
+		&proto.RouterConnectedEvent{
+			Router: &proto.Router{
+				FriendlyName: Event.Identity.FriendlyName,
+				MemberId:     Event.Identity.MemberId,
+				RouterId:     Event.Identity.RouterId,
+			},
 		},
 	)
 
@@ -127,13 +127,16 @@ func (c *Session) Authenticate(
 	c.sID = sessionId
 	// Since the registry is not handling the channel while login, we simply wait by launching a goroutine
 	go func() {
-		c.streamSend.Broadcast(&proto.RPCServerEvent{
-			Event: &proto.RPCServerEvent_SessionId{
-				SessionId: sessionId,
+		c.streamSend.Broadcast(&proto.ServerToPeers{
+			Event: &proto.ServerToPeers_SessionId{
+				SessionId: &proto.SessionIDAssigned{
+					SessionId: sessionId,
+				},
 			},
 		})
 	}()
-	c.sessionManager.sessionIdsMap[sessionId] = &c.meta.memberId
+	id := internal.IdentityFromRouter(c.meta)
+	c.sessionManager.sessionIdsMap[sessionId] = &id
 
 	log.Debug().Msg("starting listeners")
 	go c.eventListeners()

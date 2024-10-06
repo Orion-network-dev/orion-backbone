@@ -4,18 +4,22 @@ import (
 	"context"
 	"time"
 
+	"github.com/MatthieuCoder/OrionV3/internal"
 	"github.com/MatthieuCoder/OrionV3/internal/proto"
 	"github.com/rs/zerolog/log"
 	"github.com/teivah/broadcast"
 )
 
 type Session struct {
-	invitations          chan *proto.MemberConnectEvent
-	invitationsResponses chan *proto.MemberConnectResponseEvent
-	meta                 *SessionMeta
-	sessionManager       *SessionManager
+	initiate     chan *proto.RouterPeerToPeerInitiate
+	initiateACK  chan *proto.RouterPeerToPeerInitiateACK
+	terminate    chan *proto.RouterPeerToPeerTerminate
+	terminateACK chan *proto.RouterPeerToPeerTerminateACK
 
-	streamSend *broadcast.Relay[*proto.RPCServerEvent]
+	meta           *proto.Router
+	sessionManager *SessionManager
+
+	streamSend *broadcast.Relay[*proto.ServerToPeers]
 	Context    context.Context
 	cancel     context.CancelFunc
 	sID        string
@@ -29,7 +33,7 @@ func (c *Session) Dispose() {
 		c.cancelCancelation = make(chan struct{})
 		// wait 2 minutes before ending a session
 		go func() {
-			log.Debug().Uint32("uid", c.meta.memberId).Msg("starting to tick for session expitation")
+			log.Debug().Uint32("uid", c.meta.MemberId).Msg("starting to tick for session expitation")
 			timer := time.NewTimer(time.Second * 20)
 
 			select {
@@ -52,13 +56,12 @@ func (c *Session) DisposeInstant() {
 	meta := c.meta
 	// we should dispose the client
 	c.cancel()
-	c.sessionManager.disposedClients.Notify(&proto.MemberDisconnectedEvent{
-		PeerId:       meta.memberId,
-		FriendlyName: meta.friendlyName,
+	c.sessionManager.disposedClients.Notify(&proto.RouterDisconnectedEvent{
+		Router: meta,
 	})
 
 	c.sessionManager.sessionIdsMap[c.sID] = nil
-	c.sessionManager.sessions[c.meta.memberId] = nil
+	c.sessionManager.sessions[internal.IdentityFromRouter(c.meta)] = nil
 
 	// todo: implements ack in the protocol
 	time.Sleep(2 * time.Second)
@@ -66,7 +69,7 @@ func (c *Session) DisposeInstant() {
 
 func (c *Session) Restore() {
 	if c.meta != nil && c.cancelCancelation != nil {
-		log.Info().Uint32("uid", c.meta.memberId).Msg("Session restored")
+		log.Info().Uint32("uid", c.meta.MemberId).Msg("Session restored")
 		c.cancelCancelation <- struct{}{}
 	}
 }
@@ -77,18 +80,20 @@ func New(
 	ctx, cancel := context.WithCancel(context.Background())
 
 	session := &Session{
-		meta:                 nil,
-		invitations:          make(chan *proto.MemberConnectEvent),
-		invitationsResponses: make(chan *proto.MemberConnectResponseEvent),
-		sessionManager:       sessionManager,
-		streamSend:           broadcast.NewRelay[*proto.RPCServerEvent](),
-		Context:              ctx,
-		cancel:               cancel,
+		meta:           nil,
+		initiate:       make(chan *proto.RouterPeerToPeerInitiate),
+		initiateACK:    make(chan *proto.RouterPeerToPeerInitiateACK),
+		terminate:      make(chan *proto.RouterPeerToPeerTerminate),
+		terminateACK:   make(chan *proto.RouterPeerToPeerTerminateACK),
+		sessionManager: sessionManager,
+		streamSend:     broadcast.NewRelay[*proto.ServerToPeers](),
+		Context:        ctx,
+		cancel:         cancel,
 	}
 
 	return session
 }
 
-func (c *Session) Ch() *broadcast.Listener[*proto.RPCServerEvent] {
+func (c *Session) Ch() *broadcast.Listener[*proto.ServerToPeers] {
 	return c.streamSend.Listener(10)
 }
