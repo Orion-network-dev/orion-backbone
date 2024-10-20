@@ -128,7 +128,7 @@ func (c *WireguardInterface) SetMetric(metric int) error {
 		return fmt.Errorf("cannot found the route for metric adjustment, found %d routes", len(routes))
 	}
 
-	route := routes[1]
+	route := routes[0]
 	route.Priority = metric
 	err = netlink.RouteReplace(&route)
 	if err != nil {
