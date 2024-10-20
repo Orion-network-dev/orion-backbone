@@ -1,11 +1,13 @@
 package internal
 
 import (
+	"fmt"
 	"net"
 	"sync"
 
 	"github.com/rs/zerolog/log"
 	"github.com/vishvananda/netlink"
+	"golang.org/x/sys/unix"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -100,6 +102,36 @@ func (c *WireguardInterface) SetAddress(ip *net.IPNet) error {
 		IPNet: ip,
 	}); err != nil {
 		log.Error().Err(err).Msg("failed to assign IP addresses")
+		return err
+	}
+
+	return nil
+}
+
+func (c *WireguardInterface) SetMetric(metric int) error {
+
+	link, err := netlink.LinkByName(c.WgLink.InterfaceAttrs.Name)
+	if err != nil {
+		return err
+	}
+
+	routes, err := netlink.RouteListFiltered(netlink.FAMILY_V4, &netlink.Route{
+		Scope:     unix.RT_SCOPE_LINK,
+		Type:      unix.RTN_UNICAST,
+		LinkIndex: link.Attrs().Index,
+	}, netlink.RT_FILTER_SCOPE|netlink.RT_FILTER_TYPE)
+	if err != nil {
+		return err
+	}
+
+	if len(routes) != 1 {
+		return fmt.Errorf("cannot found the route for metric adjustment")
+	}
+
+	route := routes[1]
+	route.Priority = metric
+	err = netlink.RouteReplace(&route)
+	if err != nil {
 		return err
 	}
 
