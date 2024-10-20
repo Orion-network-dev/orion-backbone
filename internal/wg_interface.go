@@ -119,13 +119,13 @@ func (c *WireguardInterface) SetMetric(metric int) error {
 		Scope:     unix.RT_SCOPE_LINK,
 		Type:      unix.RTN_UNICAST,
 		LinkIndex: link.Attrs().Index,
-	}, netlink.RT_FILTER_SCOPE|netlink.RT_FILTER_TYPE)
+	}, netlink.RT_FILTER_SCOPE|netlink.RT_FILTER_TYPE|netlink.RT_FILTER_OIF|netlink.RT_FILTER_IIF)
 	if err != nil {
 		return err
 	}
 
 	if len(routes) != 1 {
-		return fmt.Errorf("cannot found the route for metric adjustment")
+		return fmt.Errorf("cannot found the route for metric adjustment, found %d routes", len(routes))
 	}
 
 	route := routes[1]
