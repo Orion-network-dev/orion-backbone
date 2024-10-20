@@ -28,8 +28,8 @@ type group struct {
 // on-per-connection.
 type Peer struct {
 	Address string
+	OrionId uint32
 	ASN     uint32
-	Weight  uint32
 }
 
 // Contest representing th entire state of the frr config file.
@@ -108,8 +108,7 @@ func (c *FrrConfigManager) Update() error {
 		if peer.ASN != 0 {
 			log.Debug().Uint32("asn", peer.ASN).Msg("new group computed")
 			context.Groups = append(context.Groups, group{
-				ASN:    peer.ASN,
-				Weight: peer.Weight,
+				ASN: peer.ASN,
 			})
 		}
 	}

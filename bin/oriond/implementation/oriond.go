@@ -3,6 +3,8 @@ package implementation
 import (
 	"context"
 	"flag"
+	"fmt"
+	"net"
 	"sync"
 
 	"github.com/MatthieuCoder/OrionV3/bin/oriond/implementation/frr"
@@ -10,6 +12,7 @@ import (
 	"github.com/MatthieuCoder/OrionV3/internal/proto"
 	"github.com/rs/zerolog/log"
 	"github.com/teivah/broadcast"
+	"github.com/vishvananda/netlink"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"google.golang.org/grpc"
 )
@@ -75,6 +78,13 @@ func NewOrionClientDaemon(
 	if frrManager, err := frr.NewFrrConfigManager(orionClient.asn, orionClient.memberId); err == nil {
 		orionClient.frrManager = frrManager
 	} else {
+		return nil, err
+	}
+
+	_, selfLoopback, _ := net.ParseCIDR(fmt.Sprintf("192.168.255.%d/32", orionClient.memberId))
+	lo, err := netlink.LinkByName("lo")
+	err = netlink.AddrAdd(lo, &netlink.Addr{IPNet: selfLoopback})
+	if err != nil {
 		return nil, err
 	}
 

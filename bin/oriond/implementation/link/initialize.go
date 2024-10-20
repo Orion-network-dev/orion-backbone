@@ -56,8 +56,9 @@ func (c *PeerLink) InitializePeerConnection(
 	c.frrManager.UpdatePeer(c.otherID, &frr.Peer{
 		ASN:     c.otherID + 64511,
 		Address: c.otherIP.IP.String(),
-		Weight:  200,
+		OrionId: c.otherID,
 	})
+	c.wireguardTunnel.AddRoute(c.otherID, 1)
 	err = c.frrManager.Update()
 	if err != nil {
 		return err

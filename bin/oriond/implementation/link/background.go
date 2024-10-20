@@ -45,7 +45,7 @@ func (c *PeerLink) updateWeights() error {
 		),
 	))) + 1
 
-	err = c.wireguardTunnel.SetMetric(metric)
+	err = c.wireguardTunnel.AddRoute(c.otherID, metric)
 	if err != nil {
 		return err
 	}

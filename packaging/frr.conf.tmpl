@@ -10,13 +10,12 @@ router bgp {{ .ASN }}
  neighbor orion{{ .ASN }} remote-as {{ .ASN }}
 {{- end -}}
 {{- range .Peers }}
- neighbor {{ .Address }} peer-group orion{{ .ASN }}
- neighbor {{ .Address }} aigp
+ neighbor 192.168.255.{{ .OrionId }} peer-group orion{{ .ASN }}
+ neighbor 192.168.255.{{ .OrionId }} aigp
 {{- end }}
  !
  address-family ipv4 unicast
   network 10.30.{{ .OrionId }}.0/24
-  network 192.168.255.{{ .OrionId }}/32
 {{- range .Groups }}
   neighbor orion{{ .ASN }} activate
   neighbor orion{{ .ASN }} route-map orion{{ .ASN }} out

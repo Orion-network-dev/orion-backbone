@@ -7,7 +7,6 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/vishvananda/netlink"
-	"golang.org/x/sys/unix"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -47,6 +46,7 @@ func NewWireguardInterface(wg *wgctrl.Client, interfaceAttrs *netlink.LinkAttrs,
 		netlink.LinkDel(wglink)
 		return nil, err
 	}
+
 	log.Debug().Str("interface", interfaceAttrs.Name).Msg("finished setting up interface")
 	return &WireguardInterface{
 		WgLink: wglink,
@@ -108,30 +108,44 @@ func (c *WireguardInterface) SetAddress(ip *net.IPNet) error {
 	return nil
 }
 
-func (c *WireguardInterface) SetMetric(metric int) error {
+func (c *WireguardInterface) AddRoute(otherId uint32, metric int) error {
 	link, err := netlink.LinkByName(c.WgLink.InterfaceAttrs.Name)
 	if err != nil {
 		return err
 	}
 
+	_, otherPeer, _ := net.ParseCIDR(fmt.Sprintf("192.168.255.%d/32", otherId))
 	routes, err := netlink.RouteListFiltered(netlink.FAMILY_V4, &netlink.Route{
-		Scope:     unix.RT_SCOPE_LINK,
-		Type:      unix.RTN_UNICAST,
 		LinkIndex: link.Attrs().Index,
-	}, netlink.RT_FILTER_SCOPE|netlink.RT_FILTER_TYPE|netlink.RT_FILTER_OIF|netlink.RT_FILTER_IIF)
+		Dst:       otherPeer,
+	}, netlink.RT_FILTER_DST|netlink.RT_FILTER_OIF|netlink.RT_FILTER_IIF)
 	if err != nil {
 		return err
 	}
 
-	if len(routes) != 1 {
+	if len(routes) == 0 {
+		// we need to create the route
+		// 192.168.255.x/32 dev orion0 metric 20
+		route := netlink.Route{
+			LinkIndex: link.Attrs().Index,
+			Priority:  metric,
+			Dst:       otherPeer,
+		}
+		err := netlink.RouteAdd(&route)
+		if err != nil {
+			return err
+		}
+
+	} else if len(routes) == 1 {
+		route := routes[0]
+		route.Priority = metric
+
+		err = netlink.RouteReplace(&route)
+		if err != nil {
+			return err
+		}
+	} else {
 		return fmt.Errorf("cannot found the route for metric adjustment, found %d routes", len(routes))
-	}
-
-	route := routes[0]
-	route.Priority = metric
-	err = netlink.RouteReplace(&route)
-	if err != nil {
-		return err
 	}
 
 	return nil
