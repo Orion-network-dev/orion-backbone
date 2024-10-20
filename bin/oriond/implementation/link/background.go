@@ -35,7 +35,7 @@ func (c *PeerLink) updateWeights() error {
 	log.Debug().Dur("ping-reponse", latency).Msg("ping(ed) peer")
 
 	// f\left(x\right)=\min\left(\max\left(e^{\ \left(\frac{500-x}{80}\right)},0\right),300\right)
-	metric := int(math.Min(
+	metric := (300 - int(math.Min(
 		300,
 		math.Max(
 			math.Exp(
@@ -43,7 +43,8 @@ func (c *PeerLink) updateWeights() error {
 			),
 			0,
 		),
-	))
+	))) + 1
+
 	err = c.wireguardTunnel.SetMetric(metric)
 	if err != nil {
 		return err

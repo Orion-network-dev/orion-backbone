@@ -109,7 +109,6 @@ func (c *WireguardInterface) SetAddress(ip *net.IPNet) error {
 }
 
 func (c *WireguardInterface) SetMetric(metric int) error {
-
 	link, err := netlink.LinkByName(c.WgLink.InterfaceAttrs.Name)
 	if err != nil {
 		return err
