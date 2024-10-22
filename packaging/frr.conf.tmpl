@@ -4,6 +4,7 @@ ip forwarding
 !
 router bgp {{ .ASN }}
  bgp bestpath aigp
+ no bgp network import-check
  bgp router-id 192.168.255.{{ .OrionId }}
 {{ range .Groups }}
  neighbor orion{{ .ASN }} peer-group
@@ -13,10 +14,13 @@ router bgp {{ .ASN }}
  neighbor 192.168.255.{{ .OrionId }} peer-group orion{{ .ASN }}
  neighbor 192.168.255.{{ .OrionId }} aigp
  neighbor 192.168.255.{{ .OrionId }} update-source 192.168.255.{{ $.OrionId }}
+ neighbor 192.168.255.{{ .OrionId }} capability extended-nexthop
+ neighbor 192.168.255.{{ .OrionId }} disable-connected-check
 {{- end }}
  !
  address-family ipv4 unicast
   network 10.30.{{ .OrionId }}.0/24
+  network 192.168.255.{{ .OrionId }}/32
 {{- range .Groups }}
   neighbor orion{{ .ASN }} activate
   neighbor orion{{ .ASN }} route-map orion{{ .ASN }} out
