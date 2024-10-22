@@ -12,6 +12,7 @@ router bgp {{ .ASN }}
 {{- range .Peers }}
  neighbor 192.168.255.{{ .OrionId }} peer-group orion{{ .ASN }}
  neighbor 192.168.255.{{ .OrionId }} aigp
+ neighbor 192.168.255.{{ .OrionId }} update-source 192.168.255.{{ $.OrionId }}
 {{- end }}
  !
  address-family ipv4 unicast

@@ -85,7 +85,8 @@ func NewOrionClientDaemon(
 	lo, err := netlink.LinkByName("lo")
 	err = netlink.AddrAdd(lo, &netlink.Addr{IPNet: selfLoopback})
 	if err != nil {
-		return nil, err
+		// ignore errors
+		log.Error().Err(err).Msg("failed to add the loopback address")
 	}
 
 	return &orionClient, nil

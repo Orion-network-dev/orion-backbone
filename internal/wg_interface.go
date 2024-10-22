@@ -135,7 +135,6 @@ func (c *WireguardInterface) AddRoute(otherId uint32, metric int) error {
 		if err != nil {
 			return err
 		}
-
 	} else if len(routes) == 1 {
 		route := routes[0]
 		route.Priority = metric
