@@ -123,28 +123,22 @@ func (c *WireguardInterface) AddRoute(otherId uint32, metric int) error {
 		return err
 	}
 
-	if len(routes) == 0 {
-		// we need to create the route
-		// 192.168.255.x/32 dev orion0 metric 20
-		route := netlink.Route{
-			LinkIndex: link.Attrs().Index,
-			Priority:  metric,
-			Dst:       otherPeer,
+	if len(routes) > 0 {
+		for _, route := range routes {
+			netlink.RouteDel(&route)
 		}
-		err := netlink.RouteAdd(&route)
-		if err != nil {
-			return err
-		}
-	} else if len(routes) == 1 {
-		route := routes[0]
-		route.Priority = metric
+	}
 
-		err = netlink.RouteReplace(&route)
-		if err != nil {
-			return err
-		}
-	} else {
-		return fmt.Errorf("cannot found the route for metric adjustment, found %d routes", len(routes))
+	// we need to create the route
+	// 192.168.255.x/32 dev orion0 metric 20
+	route := netlink.Route{
+		LinkIndex: link.Attrs().Index,
+		Priority:  metric,
+		Dst:       otherPeer,
+	}
+	err = netlink.RouteAdd(&route)
+	if err != nil {
+		return err
 	}
 
 	return nil
