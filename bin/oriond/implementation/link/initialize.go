@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	keepAlive = flag.Duration("wireguard-keepalive", time.Second*60, "")
+	keepAlive = flag.Duration("wireguard-keepalive", time.Second*5, "")
 
 	allIPRanges = net.IPNet{
 		IP:   net.IPv4(0, 0, 0, 0),
