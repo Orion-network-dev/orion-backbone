@@ -63,7 +63,6 @@ func (c *PeerLink) InitializePeerConnection(
 		Address: c.otherIP.IP.String(),
 		OrionId: c.otherID,
 	})
-	c.wireguardTunnel.AddRoute(c.otherID, 1)
 	err = c.frrManager.Update()
 	if err != nil {
 		return err
