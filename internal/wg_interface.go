@@ -85,7 +85,7 @@ func (c *WireguardInterface) SetAddress(ip *net.IPNet) error {
 
 	log.Debug().Str("interface", c.WgLink.InterfaceAttrs.Name).Msg("updating the IP address")
 
-	existingIPs, err := netlink.AddrList(c.WgLink, netlink.FAMILY_V4)
+	existingIPs, err := netlink.AddrList(c.WgLink, netlink.FAMILY_ALL)
 	if err != nil {
 		return err
 	}
