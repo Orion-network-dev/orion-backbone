@@ -3,13 +3,13 @@ package link
 import (
 	"time"
 
-	"github.com/go-ping/ping"
+	probing "github.com/prometheus-community/pro-bing"
 	"github.com/rs/zerolog/log"
 )
 
 func (c *PeerLink) updateWeights() error {
 	log.Debug().Msg("starting to ping")
-	pinger, err := ping.NewPinger(c.otherIP.IP.String())
+	pinger, err := probing.NewPinger(c.otherIP.IP.String())
 	if err != nil {
 		return err
 	}
