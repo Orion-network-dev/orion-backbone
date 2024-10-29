@@ -13,6 +13,7 @@ router bgp {{ .ASN }}
  neighbor fe80::cafe:ffff:{{ .OrionId }} peer-group orion{{ .ASN }}
  neighbor fe80::cafe:ffff:{{ .OrionId }} capability extended-nexthop
  neighbor fe80::cafe:ffff:{{ .OrionId }} capability dynamic
+ neighbor fe80::cafe:ffff:{{ .OrionId }} next-hop-self
  neighbor fe80::cafe:ffff:{{ .OrionId }} interface orion{{ .OrionId }}
 
 {{- end }}
