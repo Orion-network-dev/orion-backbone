@@ -3,7 +3,6 @@ log syslog informational
 ip forwarding
 !
 router bgp {{ .ASN }}
- bgp bestpath aigp
  no bgp network import-check
  bgp router-id 192.168.255.{{ .OrionId }}
 {{ range .Groups }}
@@ -11,11 +10,13 @@ router bgp {{ .ASN }}
  neighbor orion{{ .ASN }} remote-as {{ .ASN }}
 {{- end -}}
 {{- range .Peers }}
- neighbor 192.168.255.{{ .OrionId }} peer-group orion{{ .ASN }}
- neighbor 192.168.255.{{ .OrionId }} aigp
- neighbor 192.168.255.{{ .OrionId }} update-source 192.168.255.{{ $.OrionId }}
- neighbor 192.168.255.{{ .OrionId }} capability extended-nexthop
- neighbor 192.168.255.{{ .OrionId }} disable-connected-check
+ neighbor fe80::cafe:ffff:{{ .OrionId }} peer-group orion{{ .ASN }}
+ neighbor fe80::cafe:ffff:{{ .OrionId }} weight {{ .Weight }}
+ neighbor fe80::cafe:ffff:{{ .OrionId }} bfd
+ neighbor fe80::cafe:ffff:{{ .OrionId }} capability extended-nexthop
+ neighbor fe80::cafe:ffff:{{ .OrionId }} capability dynamic
+ neighbor fe80::cafe:ffff:{{ .OrionId }} interface orion{{ .OrionId }}
+
 {{- end }}
  !
  address-family ipv4 unicast

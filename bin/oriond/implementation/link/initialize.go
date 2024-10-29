@@ -12,9 +12,13 @@ import (
 var (
 	keepAlive = flag.Duration("wireguard-keepalive", time.Second*5, "")
 
-	allIPRanges = net.IPNet{
-		IP:   net.IPv4(0, 0, 0, 0),
+	allIP4Ranges = net.IPNet{
+		IP:   net.IPv4zero,
 		Mask: net.CIDRMask(0, 32),
+	}
+	allIP6Ranges = net.IPNet{
+		IP:   net.IPv6zero,
+		Mask: net.CIDRMask(0, 128),
 	}
 )
 
@@ -38,7 +42,8 @@ func (c *PeerLink) InitializePeerConnection(
 				PublicKey:                   PublicKey,
 				PersistentKeepaliveInterval: keepAlive,
 				AllowedIPs: []net.IPNet{
-					allIPRanges,
+					allIP4Ranges,
+					allIP6Ranges,
 				},
 			},
 		},
