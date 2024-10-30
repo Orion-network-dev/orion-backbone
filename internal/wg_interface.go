@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"fmt"
 	"net"
 	"sync"
 
@@ -85,7 +84,7 @@ func (c *WireguardInterface) SetAddress(ip *net.IPNet) error {
 
 	log.Debug().Str("interface", c.WgLink.InterfaceAttrs.Name).Msg("updating the IP address")
 
-	existingIPs, err := netlink.AddrList(c.WgLink, netlink.FAMILY_V4)
+	existingIPs, err := netlink.AddrList(c.WgLink, netlink.FAMILY_ALL)
 	if err != nil {
 		return err
 	}
@@ -102,42 +101,6 @@ func (c *WireguardInterface) SetAddress(ip *net.IPNet) error {
 		IPNet: ip,
 	}); err != nil {
 		log.Error().Err(err).Msg("failed to assign IP addresses")
-		return err
-	}
-
-	return nil
-}
-
-func (c *WireguardInterface) AddRoute(otherId uint32, metric int) error {
-	link, err := netlink.LinkByName(c.WgLink.InterfaceAttrs.Name)
-	if err != nil {
-		return err
-	}
-
-	_, otherPeer, _ := net.ParseCIDR(fmt.Sprintf("192.168.255.%d/32", otherId))
-	routes, err := netlink.RouteListFiltered(netlink.FAMILY_V4, &netlink.Route{
-		LinkIndex: link.Attrs().Index,
-		Dst:       otherPeer,
-	}, netlink.RT_FILTER_DST|netlink.RT_FILTER_OIF|netlink.RT_FILTER_IIF)
-	if err != nil {
-		return err
-	}
-
-	if len(routes) > 0 {
-		for _, route := range routes {
-			netlink.RouteDel(&route)
-		}
-	}
-
-	// we need to create the route
-	// 192.168.255.x/32 dev orion0 metric 20
-	route := netlink.Route{
-		LinkIndex: link.Attrs().Index,
-		Priority:  metric,
-		Dst:       otherPeer,
-	}
-	err = netlink.RouteAdd(&route)
-	if err != nil {
 		return err
 	}
 

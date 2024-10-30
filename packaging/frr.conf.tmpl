@@ -3,7 +3,6 @@ log syslog informational
 ip forwarding
 !
 router bgp {{ .ASN }}
- bgp bestpath aigp
  no bgp network import-check
  bgp router-id 192.168.255.{{ .OrionId }}
 {{ range .Groups }}
@@ -11,11 +10,12 @@ router bgp {{ .ASN }}
  neighbor orion{{ .ASN }} remote-as {{ .ASN }}
 {{- end -}}
 {{- range .Peers }}
- neighbor 192.168.255.{{ .OrionId }} peer-group orion{{ .ASN }}
- neighbor 192.168.255.{{ .OrionId }} aigp
- neighbor 192.168.255.{{ .OrionId }} update-source 192.168.255.{{ $.OrionId }}
- neighbor 192.168.255.{{ .OrionId }} capability extended-nexthop
- neighbor 192.168.255.{{ .OrionId }} disable-connected-check
+ neighbor fe80::cafe:ffff:{{ .OrionId }} peer-group orion{{ .ASN }}
+ neighbor fe80::cafe:ffff:{{ .OrionId }} capability extended-nexthop
+ neighbor fe80::cafe:ffff:{{ .OrionId }} capability dynamic
+ neighbor fe80::cafe:ffff:{{ .OrionId }} next-hop-self
+ neighbor fe80::cafe:ffff:{{ .OrionId }} interface orion{{ .OrionId }}
+
 {{- end }}
  !
  address-family ipv4 unicast
@@ -43,13 +43,9 @@ route-map orion{{ .ASN }} permit 10
 route-map orion{{ .ASN }} deny 30
 {{ end -}}
 !
-ip prefix-list orion seq 10 permit 172.30.0.0/15 le 31 ge 31
-ip prefix-list orion seq 11 permit 192.168.255.0/24 le 32 ge 32
 ip prefix-list orion seq 20 permit 10.30.0.0/16 le 32 ge 24
 ip prefix-list orion seq 30 permit 232.30.0.0/16 le 32 ge 24
 ip route 10.30.0.0/16 reject 255
-ip route 172.30.0.0/15 reject 255
-ip route 192.168.255.0/24 reject 255
 ip route 10.30.{{ .OrionId }}.0/24 lo 255
 !
 line vty
