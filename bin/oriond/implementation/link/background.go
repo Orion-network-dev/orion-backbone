@@ -18,6 +18,7 @@ func (c *PeerLink) updateWeights() error {
 	// Ping one time
 	pinger.Count = 1
 	pinger.Timeout = time.Second * 5
+	pinger.InterfaceName = c.wireguardTunnel.WgLink.InterfaceAttrs.Name
 
 	err = pinger.Run() // Blocks until finished.
 	if err != nil {
