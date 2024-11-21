@@ -3,31 +3,41 @@ log syslog informational
 ip forwarding
 ip nht resolve-via-default
 !
+{{- range .Peers }}
+interface orion{{ .OrionId }}
+ ipv6 nd ra-interval 3
+!
+{{- end }}
+!
 router bgp {{ .ASN }}
  no bgp network import-check
+ bgp ipv6-auto-ra
  bgp router-id 192.168.255.{{ .OrionId }}
+{{ range .Groups }}
+ neighbor orionAS{{ .ASN }} peer-group
+ neighbor orionAS{{ .ASN }} capability extended-nexthop
+ neighbor orionAS{{ .ASN }} capability dynamic
+{{- end -}}
 {{- range .Peers }}
- neighbor orion{{ .OrionId }} interface orion{{ .OrionId }}
  neighbor orion{{ .OrionId }} interface remote-as {{ .ASN }}
- neighbor orion{{ .OrionId }} capability extended-nexthop
- neighbor orion{{ .OrionId }} capability dynamic
+ neighbor orion{{ .OrionId }} interface peer-group orionAS{{ .ASN }}
 {{- end }}
  !
  address-family ipv4 unicast
   network 10.30.{{ .OrionId }}.0/24
-{{- range .Peers }}
-  neighbor orion{{ .OrionId }} activate
-  neighbor orion{{ .OrionId }} route-map orion{{ .ASN }} out
-  neighbor orion{{ .OrionId }} route-map orion{{ .ASN }} in
+{{- range .Groups }}
+  neighbor orionAS{{ .ASN }} activate
+  neighbor orionAS{{ .ASN }} route-map orion{{ .ASN }} out
+  neighbor orionAS{{ .ASN }} route-map orion{{ .ASN }} in
 {{- end }}
  exit-address-family
  !
  address-family ipv4 multicast
   network 232.30.{{ .OrionId }}.0/24
-{{- range .Peers }}
-  neighbor orion{{ .OrionId }} activate
-  neighbor orion{{ .OrionId }} route-map orion{{ .ASN }} out
-  neighbor orion{{ .OrionId }} route-map orion{{ .ASN }} in
+{{- range .Groups }}
+  neighbor orionAS{{ .ASN }} activate
+  neighbor orionAS{{ .ASN }} route-map orion{{ .ASN }} out
+  neighbor orionAS{{ .ASN }} route-map orion{{ .ASN }} in
 {{- end }}
  exit-address-family
 exit
