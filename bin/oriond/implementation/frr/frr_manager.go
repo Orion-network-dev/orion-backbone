@@ -19,9 +19,8 @@ var (
 
 // Struct containing the information regarding someone ASN on the network.
 type group struct {
-	ASN       uint32
-	Weight    uint32
-	peerCount uint32
+	ASN    uint32
+	Weight uint32
 }
 
 // Struct containing a peer in the orion network, this is typically
@@ -30,6 +29,7 @@ type Peer struct {
 	Address string
 	OrionId uint32
 	ASN     uint32
+	Weight  uint32
 }
 
 // Contest representing th entire state of the frr config file.

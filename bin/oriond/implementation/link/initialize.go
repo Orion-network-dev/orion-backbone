@@ -62,6 +62,7 @@ func (c *PeerLink) InitializePeerConnection(
 		ASN:     c.otherID + 64511,
 		Address: c.otherIP.IP.String(),
 		OrionId: c.otherID,
+		Weight:  0,
 	})
 	err = c.frrManager.Update()
 	if err != nil {
