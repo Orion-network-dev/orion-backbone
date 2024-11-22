@@ -35,8 +35,8 @@ func (c *PeerLink) updateWeights() error {
 
 	log.Debug().Dur("ping-reponse", latency).Msg("ping(ed) peer")
 
-	// 500 - max( 0, latency ), more when less latency & less with more latency
-	metric := 500 - math.Max(float64(0), float64(int64(500)-latency.Milliseconds()))
+	// max( 0, latency ), more when less latency & less with more latency
+	metric := math.Max(float64(0), float64(int64(500)-latency.Milliseconds()))
 	peer := c.frrManager.GetPeer(c.otherID)
 	peer.Weight = uint32(metric)
 	c.frrManager.UpdatePeer(c.otherID, peer)
