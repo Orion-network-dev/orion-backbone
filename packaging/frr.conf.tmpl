@@ -21,7 +21,6 @@ router bgp {{ .ASN }}
 {{- range .Peers }}
  neighbor orion{{ .OrionId }} interface remote-as {{ .ASN }}
  neighbor orion{{ .OrionId }} bfd
- neighbor orion{{ .OrionId }} weight {{ .Weight }}
  neighbor orion{{ .OrionId }} interface peer-group orionAS{{ .ASN }}
 {{- end }}
  !
