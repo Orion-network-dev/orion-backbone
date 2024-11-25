@@ -16,7 +16,7 @@ import (
 var (
 	AuthorityPath = flag.String("tls-authority-path", "/etc/oriond/ca.crt", "Path to the certificate authority file")
 	P12Path       = flag.String("tls-authentication", "/etc/oriond/identity.p12", "Path to the p12 file")
-	PasswordFile  = flag.String("tls-authentication-pass-file", "", "Password for the identity")
+	PasswordFile  = flag.String("tls-authentication-pass-file", "/etc/oriond/identity.password", "Password for the identity")
 )
 
 func loadAuthorityPool() (*x509.CertPool, error) {
