@@ -43,7 +43,7 @@ func (c *Session) Authenticate(
 	}
 
 	// Parse the user-given certificate
-	cert, err := internal.ParsePEMCertificate(Event.Certificate)
+	certA, err := x509.ParsePKIXPublicKey(Event.Certificate)
 	if err != nil {
 		log.Error().
 			Err(err).
@@ -51,14 +51,9 @@ func (c *Session) Authenticate(
 		return err
 	}
 
-	// Create a new pool from the user-given PEM trust chain
-	intermediates, err := internal.CreateCertPoolFromPEM(Event.Certificate)
-	if err != nil {
-		log.Error().
-			Err(err).
-			Msg("failed to parse the intermediary certificates")
-		return err
-	}
+	cert := certA.(*x509.Certificate)
+	intermediates := x509.NewCertPool()
+	intermediates.AddCert(cert)
 
 	identifier := fmt.Sprintf("%d.member.orionet.re", Event.MemberId)
 

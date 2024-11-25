@@ -9,6 +9,7 @@ import (
 
 	"github.com/MatthieuCoder/OrionV3/internal"
 	"github.com/rs/zerolog/log"
+	"software.sslmate.com/src/go-pkcs12"
 )
 
 var (
@@ -22,23 +23,21 @@ func (c *OrionClientDaemon) resolveIdentity() error {
 	if *memberIdOverride != 0 {
 		c.memberId = uint32(*memberIdOverride)
 	} else {
-		certificateFile, err := os.ReadFile(*internal.CertificatePath)
+
+		p12, err := os.ReadFile(*internal.AuthorityPath)
 		if err != nil {
-			log.Error().
-				Err(err).
-				Str("file", *internal.CertificatePath).
-				Msg("Cannot open the certificate path")
+			log.Error().Err(err).Msg("failed to load the credentials file")
+			return err
+		}
+		password, err := os.ReadFile(*internal.PasswordFile)
+		if err != nil {
+			log.Error().Err(err).Msg("failed to load the password file")
 			return err
 		}
 
-		certificate, err := internal.ParsePEMCertificate(
-			certificateFile,
-		)
+		_, certificate, err := pkcs12.Decode(p12, string(password))
 		if err != nil {
-			log.Error().
-				Err(err).
-				Str("file", *internal.CertificatePath).
-				Msg("Failed to load the certificate data")
+			log.Error().Err(err).Msg("failed to use the p12 file")
 			return err
 		}
 
@@ -47,7 +46,6 @@ func (c *OrionClientDaemon) resolveIdentity() error {
 			err = fmt.Errorf("the certificate is authorized for multiple dns names, please use -override-member-id to specify the member-id")
 			log.Error().
 				Err(err).
-				Str("file", *internal.CertificatePath).
 				Msg(err.Error())
 			return err
 		}
@@ -59,7 +57,6 @@ func (c *OrionClientDaemon) resolveIdentity() error {
 			if err != nil {
 				log.Error().
 					Err(err).
-					Str("file", *internal.CertificatePath).
 					Msg("the member_id field in the certificate couldn't be parsed, please use -override-member-id to specify the member-id")
 				return err
 			}
@@ -68,7 +65,6 @@ func (c *OrionClientDaemon) resolveIdentity() error {
 			err = fmt.Errorf("the member_id couldn't be extracted from the certicate")
 			log.Error().
 				Err(err).
-				Str("file", *internal.CertificatePath).
 				Msg("the member_id field in the certificate couldn't be parsed, please use -override-member-id to specify the member-id")
 			return err
 		}

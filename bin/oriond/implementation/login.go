@@ -4,45 +4,31 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/x509"
-	"encoding/pem"
 	"fmt"
 	"os"
 
 	"github.com/MatthieuCoder/OrionV3/internal"
 	"github.com/MatthieuCoder/OrionV3/internal/proto"
 	"github.com/rs/zerolog/log"
+	"software.sslmate.com/src/go-pkcs12"
 )
 
 func (c *OrionClientDaemon) login() error {
 	log.Info().Msg("loading the certificate")
-
-	// Load the certificates
-	certificateFile, err := os.ReadFile(*internal.CertificatePath)
+	p12, err := os.ReadFile(*internal.AuthorityPath)
 	if err != nil {
-		log.Error().
-			Err(err).
-			Str("file", *internal.CertificatePath).
-			Msg("cannot open the certificate path")
+		log.Error().Err(err).Msg("failed to load the credentials file")
+		return err
+	}
+	password, err := os.ReadFile(*internal.PasswordFile)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to load the password file")
 		return err
 	}
 
-	keyFile, err := os.ReadFile(*internal.KeyPath)
+	pk, certificate, err := pkcs12.Decode(p12, string(password))
 	if err != nil {
-		log.Error().
-			Err(err).
-			Str("file", *internal.KeyPath).
-			Msg("cannot open the key path")
-		return err
-	}
-
-	// Parsing the PEM file as a PKCS8 private key
-	rawCertificate, _ := pem.Decode(keyFile)
-	pk, err := x509.ParsePKCS8PrivateKey(rawCertificate.Bytes)
-	if err != nil {
-		log.Error().
-			Err(err).
-			Str("file", *internal.KeyPath).
-			Msg("failed to parse the pkcs8-formated private key")
+		log.Error().Err(err).Msg("failed to use the p12 file")
 		return err
 	}
 
@@ -52,13 +38,14 @@ func (c *OrionClientDaemon) login() error {
 		err = fmt.Errorf("this private key is not a ECDSA private key, oriond only works with ECDSA private keys")
 		log.Error().
 			Err(err).
-			Str("file", *internal.KeyPath).
 			Msg(err.Error())
 		return err
 	}
 
+	publicKeyDer, _ := x509.MarshalPKIXPublicKey(certificate)
+
 	// We compute the nonce with all the data
-	nonce, err := internal.CalculateNonce(c.memberId, *friendlyName, certificateFile, ecdsaKey)
+	nonce, err := internal.CalculateNonce(c.memberId, *friendlyName, publicKeyDer, ecdsaKey)
 	if err != nil {
 		err = fmt.Errorf("couldn't compute the nonce given from the given information about this node")
 		log.Error().
