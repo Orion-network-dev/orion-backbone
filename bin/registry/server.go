@@ -43,6 +43,10 @@ func main() {
 		}()
 	}
 	if *debug {
+		log.Logger = log.Output(io.MultiWriter(
+			journaldWriter,
+			zerolog.NewConsoleWriter(),
+		))
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 
