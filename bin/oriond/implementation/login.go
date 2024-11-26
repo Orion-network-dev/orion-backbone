@@ -26,7 +26,7 @@ func (c *OrionClientDaemon) login() error {
 		return err
 	}
 
-	pk, certificate, err := pkcs12.Decode(p12, string(password))
+	pk, certificate, _, err := pkcs12.DecodeChain(p12, string(password))
 	if err != nil {
 		log.Error().Err(err).Msg("failed to use the p12 file")
 		return err

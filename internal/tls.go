@@ -9,8 +9,8 @@ import (
 	"os"
 
 	"github.com/rs/zerolog/log"
-	"golang.org/x/crypto/pkcs12"
 	"google.golang.org/grpc/credentials"
+	"software.sslmate.com/src/go-pkcs12"
 )
 
 var (
@@ -36,7 +36,10 @@ func loadAuthorityPool() (*x509.CertPool, error) {
 }
 
 func LoadTLS(clientCerts bool) (credentials.TransportCredentials, error) {
-	log.Debug().Str("authority-path", *AuthorityPath).Str("certificate-path", *P12Path).Str("pass-path", *PasswordFile).Msg("loading the certificates for login")
+	log.Debug().Str("authority-path", *AuthorityPath).
+		Str("certificate-path", *P12Path).
+		Str("pass-path", *PasswordFile).
+		Msg("loading the certificates for login")
 
 	p12, err := os.ReadFile(*AuthorityPath)
 	if err != nil {
@@ -49,7 +52,7 @@ func LoadTLS(clientCerts bool) (credentials.TransportCredentials, error) {
 		return nil, err
 	}
 
-	key, cert, err := pkcs12.Decode(p12, string(password))
+	key, cert, _, err := pkcs12.DecodeChain(p12, string(password))
 	if err != nil {
 		log.Error().Err(err).Msg("failed to use the p12 file")
 		return nil, err
