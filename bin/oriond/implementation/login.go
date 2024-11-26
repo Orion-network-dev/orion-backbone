@@ -15,7 +15,7 @@ import (
 
 func (c *OrionClientDaemon) login() error {
 	log.Info().Msg("loading the certificate")
-	p12, err := os.ReadFile(*internal.AuthorityPath)
+	p12, err := os.ReadFile(*internal.P12Path)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to load the credentials file")
 		return err

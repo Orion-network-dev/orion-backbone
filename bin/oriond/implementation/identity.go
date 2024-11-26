@@ -24,7 +24,7 @@ func (c *OrionClientDaemon) resolveIdentity() error {
 		c.memberId = uint32(*memberIdOverride)
 	} else {
 
-		p12, err := os.ReadFile(*internal.AuthorityPath)
+		p12, err := os.ReadFile(*internal.P12Path)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to load the credentials file")
 			return err

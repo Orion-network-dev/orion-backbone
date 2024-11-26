@@ -41,7 +41,7 @@ func LoadTLS(clientCerts bool) (credentials.TransportCredentials, error) {
 		Str("pass-path", *PasswordFile).
 		Msg("loading the certificates for login")
 
-	p12, err := os.ReadFile(*AuthorityPath)
+	p12, err := os.ReadFile(*P12Path)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to load the credentials file")
 		return nil, err
