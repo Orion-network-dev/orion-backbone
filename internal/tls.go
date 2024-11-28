@@ -13,7 +13,7 @@ import (
 
 var (
 	AuthorityPath = flag.String("tls-authority-path", "/etc/oriond/ca.crt", "Path to the certificate authority file")
-	TLSPath       = flag.String("tls-path", "/etc/oriond/identity.key", "Path to the certificate authority file")
+	TLSPath       = flag.String("tls-path", "/etc/oriond/identity.pem", "Path to the certificate authority file")
 )
 
 func LoadPemFile() (*ecdsa.PrivateKey, []*x509.Certificate) {
