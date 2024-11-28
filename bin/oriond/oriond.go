@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
 )
 
@@ -44,16 +46,22 @@ func main() {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 
-	// Get TLS credentials
-	cred, err := internal.LoadTLS(false)
-	if err != nil {
-		log.Error().Err(err).Msgf("unable to connect gRPC channel")
-		return
-	}
+	privateKey, chain := internal.LoadPemFile()
+	certificateKeyPair := internal.LoadX509KeyPair(privateKey, chain)
+	authorityPool, err := internal.LoadAuthorityPool()
+
+	keyChain := credentials.NewTLS(
+		&tls.Config{
+			Certificates: []tls.Certificate{certificateKeyPair},
+			RootCAs:      authorityPool,
+			MinVersion:   tls.VersionTLS13,
+			MaxVersion:   tls.VersionTLS13,
+		},
+	)
 
 	conn, err := grpc.NewClient(
 		fmt.Sprintf("%s:%d", *registryServer, *registryPort),
-		grpc.WithTransportCredentials(cred),
+		grpc.WithTransportCredentials(keyChain),
 		grpc.WithIdleTimeout(time.Second*120),
 		grpc.WithKeepaliveParams(keepalive.ClientParameters{
 			Time:                time.Second * 20,

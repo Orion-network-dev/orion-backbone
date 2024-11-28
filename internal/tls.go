@@ -1,23 +1,54 @@
 package internal
 
 import (
+	"crypto/ecdsa"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"flag"
 	"fmt"
 	"os"
-
-	"github.com/rs/zerolog/log"
-	"google.golang.org/grpc/credentials"
+	"reflect"
 )
 
 var (
-	AuthorityPath   = flag.String("tls-authority-path", "/etc/oriond/ca.crt", "Path to the certificate authority file")
-	CertificatePath = flag.String("tls-certificate-path", "/etc/oriond/identity.crt", "Path to the certificate authority file")
-	KeyPath         = flag.String("tls-key-path", "/etc/oriond/identity.key", "Path to the certificate authority file")
+	AuthorityPath = flag.String("tls-authority-path", "/etc/oriond/ca.crt", "Path to the certificate authority file")
+	TLSPath       = flag.String("tls-path", "/etc/oriond/identity.key", "Path to the certificate authority file")
 )
 
-func loadAuthorityPool() (*x509.CertPool, error) {
+func LoadPemFile() (*ecdsa.PrivateKey, []*x509.Certificate) {
+	bytes, err := os.ReadFile(*TLSPath)
+	if err != nil {
+		panic(err)
+	}
+
+	var privateKey *ecdsa.PrivateKey
+	var chain []*x509.Certificate
+
+	for block, rest := pem.Decode(bytes); block != nil; block, rest = pem.Decode(rest) {
+		if block.Type == "PRIVATE KEY" {
+			pk, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+			if err != nil {
+				panic("cannot read a private key in the pem file")
+			}
+
+			if ec, ok := pk.(*ecdsa.PrivateKey); !ok {
+				panic(fmt.Errorf("invalid key type: %s", reflect.TypeOf(pk)))
+			} else {
+				privateKey = ec
+			}
+		} else if block.Type == "CERTIFICATE" {
+			cert, err := x509.ParseCertificate(block.Bytes)
+			if err != nil {
+				panic("cannot read a certificate in the pem file")
+			}
+			chain = append(chain, cert)
+		}
+	}
+	return privateKey, chain
+}
+
+func LoadAuthorityPool() (*x509.CertPool, error) {
 	// Load the CA certificate
 	trustedCert, err := os.ReadFile(*AuthorityPath)
 	if err != nil {
@@ -33,33 +64,13 @@ func loadAuthorityPool() (*x509.CertPool, error) {
 	return certPool, nil
 }
 
-func LoadTLS(clientCerts bool) (credentials.TransportCredentials, error) {
-	log.Debug().Str("authority-path", *AuthorityPath).Str("certificate-path", *CertificatePath).Str("key-path", *KeyPath).Msg("loading the certificates for login")
-
-	// Load the client certificate and its key
-	clientCert, err := tls.LoadX509KeyPair(*CertificatePath, *KeyPath)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to load the certificate")
-		return nil, err
+func LoadX509KeyPair(privateKey *ecdsa.PrivateKey, chain []*x509.Certificate) tls.Certificate {
+	certificate := tls.Certificate{
+		PrivateKey:  privateKey,
+		Certificate: [][]byte{},
 	}
-	authorityPool, err := loadAuthorityPool()
-	if err != nil {
-		log.Error().Err(err).Msg("failed to load the authority files")
-		return nil, err
+	for _, certificateInChain := range chain {
+		certificate.Certificate = append(certificate.Certificate, certificateInChain.Raw)
 	}
-
-	// Create the TLS configuration
-	tlsConfig := &tls.Config{
-		Certificates: []tls.Certificate{clientCert},
-		RootCAs:      authorityPool,
-		MinVersion:   tls.VersionTLS13,
-		MaxVersion:   tls.VersionTLS13,
-	}
-
-	if clientCerts {
-		tlsConfig.ClientCAs = authorityPool
-	}
-
-	// Return new TLS credentials based on the TLS configuration
-	return credentials.NewTLS(tlsConfig), nil
+	return certificate
 }

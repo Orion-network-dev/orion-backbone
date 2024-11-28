@@ -1,9 +1,8 @@
 package implementation
 
 import (
+	"bytes"
 	"context"
-	"crypto/ecdsa"
-	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 	"os"
@@ -17,48 +16,25 @@ func (c *OrionClientDaemon) login() error {
 	log.Info().Msg("loading the certificate")
 
 	// Load the certificates
-	certificateFile, err := os.ReadFile(*internal.CertificatePath)
+	certificateFile, err := os.ReadFile(*internal.TLSPath)
 	if err != nil {
 		log.Error().
 			Err(err).
-			Str("file", *internal.CertificatePath).
+			Str("file", *internal.TLSPath).
 			Msg("cannot open the certificate path")
 		return err
 	}
 
-	keyFile, err := os.ReadFile(*internal.KeyPath)
-	if err != nil {
-		log.Error().
-			Err(err).
-			Str("file", *internal.KeyPath).
-			Msg("cannot open the key path")
-		return err
-	}
+	var buffer bytes.Buffer
 
-	// Parsing the PEM file as a PKCS8 private key
-	rawCertificate, _ := pem.Decode(keyFile)
-	pk, err := x509.ParsePKCS8PrivateKey(rawCertificate.Bytes)
-	if err != nil {
-		log.Error().
-			Err(err).
-			Str("file", *internal.KeyPath).
-			Msg("failed to parse the pkcs8-formated private key")
-		return err
-	}
-
-	// We check the key type to match ecdsa
-	ecdsaKey, isEcdsaKey := pk.(*ecdsa.PrivateKey)
-	if !isEcdsaKey {
-		err = fmt.Errorf("this private key is not a ECDSA private key, oriond only works with ECDSA private keys")
-		log.Error().
-			Err(err).
-			Str("file", *internal.KeyPath).
-			Msg(err.Error())
-		return err
+	for block, rest := pem.Decode(certificateFile); block != nil; block, rest = pem.Decode(rest) {
+		if block.Type == "CERTIFICATE" {
+			pem.Encode(&buffer, block)
+		}
 	}
 
 	// We compute the nonce with all the data
-	nonce, err := internal.CalculateNonce(c.memberId, *friendlyName, certificateFile, ecdsaKey)
+	nonce, err := internal.CalculateNonce(c.memberId, *friendlyName, buffer.Bytes(), c.privateKey)
 	if err != nil {
 		err = fmt.Errorf("couldn't compute the nonce given from the given information about this node")
 		log.Error().

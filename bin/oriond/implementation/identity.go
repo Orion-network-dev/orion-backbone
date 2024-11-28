@@ -3,11 +3,9 @@ package implementation
 import (
 	"flag"
 	"fmt"
-	"os"
 	"regexp"
 	"strconv"
 
-	"github.com/MatthieuCoder/OrionV3/internal"
 	"github.com/rs/zerolog/log"
 )
 
@@ -22,53 +20,31 @@ func (c *OrionClientDaemon) resolveIdentity() error {
 	if *memberIdOverride != 0 {
 		c.memberId = uint32(*memberIdOverride)
 	} else {
-		certificateFile, err := os.ReadFile(*internal.CertificatePath)
-		if err != nil {
-			log.Error().
-				Err(err).
-				Str("file", *internal.CertificatePath).
-				Msg("Cannot open the certificate path")
-			return err
-		}
-
-		certificate, err := internal.ParsePEMCertificate(
-			certificateFile,
-		)
-		if err != nil {
-			log.Error().
-				Err(err).
-				Str("file", *internal.CertificatePath).
-				Msg("Failed to load the certificate data")
-			return err
-		}
-
+		dnsNames := c.chain[0].DNSNames
 		// The certificate should only have a single DNSName in his list
-		if len(certificate.DNSNames) != 1 {
-			err = fmt.Errorf("the certificate is authorized for multiple dns names, please use -override-member-id to specify the member-id")
+		if len(dnsNames) != 1 {
+			err := fmt.Errorf("the certificate is authorized for multiple dns names, please use -override-member-id to specify the member-id")
 			log.Error().
 				Err(err).
-				Str("file", *internal.CertificatePath).
 				Msg(err.Error())
 			return err
 		}
 
 		// Set the memberId to the ont in the certificate.
-		matches := memberIdRegex.FindStringSubmatch(certificate.DNSNames[0])
+		matches := memberIdRegex.FindStringSubmatch(dnsNames[0])
 		if len(matches) == 2 {
 			number, err := strconv.ParseInt(matches[1], 10, 32)
 			if err != nil {
 				log.Error().
 					Err(err).
-					Str("file", *internal.CertificatePath).
 					Msg("the member_id field in the certificate couldn't be parsed, please use -override-member-id to specify the member-id")
 				return err
 			}
 			c.memberId = uint32(number)
 		} else {
-			err = fmt.Errorf("the member_id couldn't be extracted from the certicate")
+			err := fmt.Errorf("the member_id couldn't be extracted from the certicate")
 			log.Error().
 				Err(err).
-				Str("file", *internal.CertificatePath).
 				Msg("the member_id field in the certificate couldn't be parsed, please use -override-member-id to specify the member-id")
 			return err
 		}

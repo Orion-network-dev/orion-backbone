@@ -2,6 +2,8 @@ package implementation
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/x509"
 	"flag"
 	"sync"
 
@@ -42,6 +44,9 @@ type OrionClientDaemon struct {
 	ParentCtx         context.Context
 	ctxCancel         context.CancelFunc
 	establishedStream *broadcast.Relay[uint32]
+
+	privateKey *ecdsa.PrivateKey
+	chain      []*x509.Certificate
 }
 
 // Creates and initializes a new Orion client

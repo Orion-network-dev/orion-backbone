@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"io"
@@ -17,6 +18,7 @@ import (
 	"github.com/rs/zerolog/journald"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
 )
 
@@ -45,12 +47,24 @@ func main() {
 	if *debug {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
-
-	cred, err := internal.LoadTLS(true)
+	privateKey, chain := internal.LoadPemFile()
+	certificateKeyPair := internal.LoadX509KeyPair(privateKey, chain)
+	authorityPool, err := internal.LoadAuthorityPool()
 	if err != nil {
-		log.Error().Err(err).Msgf("Failed to read the required certificates")
+		log.Error().Err(err).Msgf("Failed to start listener")
 		return
 	}
+
+	keyChain := credentials.NewTLS(
+		&tls.Config{
+			Certificates: []tls.Certificate{certificateKeyPair},
+			RootCAs:      authorityPool,
+			MinVersion:   tls.VersionTLS13,
+			MaxVersion:   tls.VersionTLS13,
+			ClientAuth:   tls.RequireAndVerifyClientCert,
+			ClientCAs:    authorityPool,
+		},
+	)
 
 	lis, err := net.Listen("tcp", *listeningHost)
 
@@ -61,7 +75,7 @@ func main() {
 
 	// Create a new gRPC server
 	s := grpc.NewServer(
-		grpc.Creds(cred),
+		grpc.Creds(keyChain),
 		grpc.KeepaliveParams(keepalive.ServerParameters{
 			Time:              time.Second * 20,
 			Timeout:           time.Second * 1,
