@@ -70,7 +70,7 @@ func (c *Session) Authenticate(
 	log.Debug().
 		Msgf("Certificate verification succesful, checking common names (%d memberid => %s common name ?)", Event.MemberId, userCertificate.Subject.CommonName)
 
-	if userCertificate.Subject.CommonName == fmt.Sprintf("%d:oriond", Event.MemberId) {
+	if userCertificate.Subject.CommonName != fmt.Sprintf("%d:oriond", Event.MemberId) {
 		err := fmt.Errorf("this certificate is not valid for oriond")
 		log.Error().
 			Err(err).
