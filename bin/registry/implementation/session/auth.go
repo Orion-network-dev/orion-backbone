@@ -50,7 +50,7 @@ func (c *Session) Authenticate(
 			certificate, err := x509.ParseCertificate(block.Bytes)
 			if certificate.IsCA && err == nil {
 				intermediates.AddCert(certificate)
-			} else {
+			} else if err == nil {
 				userCertificate = certificate
 			}
 		}
@@ -66,6 +66,9 @@ func (c *Session) Authenticate(
 			Msg("user supplied an orion-invalid certificate")
 		return err
 	}
+
+	log.Debug().
+		Msgf("Certificate verification succesful, checking common names (%d memberid => %s common name ?)", Event.MemberId, userCertificate.Subject.CommonName)
 
 	if userCertificate.Subject.CommonName == fmt.Sprintf("%d:oriond", Event.MemberId) {
 		err := fmt.Errorf("this certificate is not valid for oriond")
