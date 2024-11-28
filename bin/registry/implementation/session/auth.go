@@ -43,7 +43,7 @@ func (c *Session) Authenticate(
 		return err
 	}
 	intermediates := x509.NewCertPool()
-	var userCertificate x509.Certificate
+	var userCertificate *x509.Certificate
 
 	for block, rest := pem.Decode(Event.Certificate); block != nil; block, rest = pem.Decode(rest) {
 		if block.Type == "CERTIFICATE" {
@@ -51,7 +51,7 @@ func (c *Session) Authenticate(
 			if certificate.IsCA && err == nil {
 				intermediates.AddCert(certificate)
 			} else {
-				certificate = &userCertificate
+				userCertificate = certificate
 			}
 		}
 	}

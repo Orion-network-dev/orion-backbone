@@ -29,7 +29,13 @@ func (c *OrionClientDaemon) login() error {
 
 	for block, rest := pem.Decode(certificateFile); block != nil; block, rest = pem.Decode(rest) {
 		if block.Type == "CERTIFICATE" {
-			pem.Encode(&buffer, block)
+			err := pem.Encode(&buffer, block)
+			if err != nil {
+				log.Error().
+					Err(err).
+					Msg("cannot encode to pem")
+				return err
+			}
 		}
 	}
 
