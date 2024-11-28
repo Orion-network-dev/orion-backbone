@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"math/big"
 	"time"
@@ -41,34 +42,23 @@ func (c *Session) Authenticate(
 			Msg("user supplied an invalid date/time")
 		return err
 	}
+	intermediates := x509.NewCertPool()
+	var userCertificate x509.Certificate
 
-	// Parse the user-given certificate
-	cert, err := internal.ParsePEMCertificate(Event.Certificate)
-	if err != nil {
-		log.Error().
-			Err(err).
-			Msg("failed to parse the user leaf certificate")
-		return err
+	for block, rest := pem.Decode(Event.Certificate); block != nil; block, rest = pem.Decode(rest) {
+		if block.Type == "CERTIFICATE" {
+			certificate, err := x509.ParseCertificate(block.Bytes)
+			if certificate.IsCA && err == nil {
+				intermediates.AddCert(certificate)
+			} else {
+				certificate = &userCertificate
+			}
+		}
 	}
 
-	// Create a new pool from the user-given PEM trust chain
-	intermediates, err := internal.CreateCertPoolFromPEM(Event.Certificate)
-	if err != nil {
-		log.Error().
-			Err(err).
-			Msg("failed to parse the intermediary certificates")
-		return err
-	}
-
-	identifier := fmt.Sprintf("%d.member.orionet.re", Event.MemberId)
-
-	// Verifying the certificate validity using the root certificate and user-provided
-	// intermediary certificates. This checks that the certificate is signed and allowed to use
-	// the name `{member_id}.mem.orionet.re` which specifies a member member for the member_id {member_id}
-	if _, err := cert.Verify(x509.VerifyOptions{
+	if _, err := userCertificate.Verify(x509.VerifyOptions{
 		Roots:         RootCertPool,
 		Intermediates: intermediates,
-		DNSName:       identifier,
 		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 	}); err != nil {
 		log.Debug().
@@ -77,7 +67,7 @@ func (c *Session) Authenticate(
 		return err
 	}
 
-	if cert.Subject.CommonName != fmt.Sprintf("%s:oriond", identifier) {
+	if userCertificate.Subject.CommonName == fmt.Sprintf("%d:oriond", Event.MemberId) {
 		err := fmt.Errorf("this certificate is not valid for oriond")
 		log.Error().
 			Err(err).
@@ -89,7 +79,7 @@ func (c *Session) Authenticate(
 	nonce := internal.CalculateNonceBytes(Event.MemberId, Event.FriendlyName, Event.TimestampSigned)
 
 	// Verify that the user-provided data matches the signature created using the client root key
-	successful := ecdsa.VerifyASN1(cert.PublicKey.(*ecdsa.PublicKey), nonce, Event.Signed)
+	successful := ecdsa.VerifyASN1(userCertificate.PublicKey.(*ecdsa.PublicKey), nonce, Event.Signed)
 	if !successful {
 		err := fmt.Errorf("this signature does not seem to be a valid ECDSA signature")
 		log.Debug().
@@ -99,7 +89,7 @@ func (c *Session) Authenticate(
 	}
 
 	log.Info().
-		Msgf("User %s auth with certificate with serial: %s", identifier, cert.SerialNumber)
+		Msgf("User %d (%s) auth with certificate with serial: %s", Event.FriendlyName, Event.MemberId, userCertificate.SerialNumber)
 
 	// the user is authenticated, we start listening for global events
 
