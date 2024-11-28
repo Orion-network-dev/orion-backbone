@@ -4,8 +4,8 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
-	"io"
 	"net"
+	"os"
 	"time"
 
 	"net/http"
@@ -15,7 +15,6 @@ import (
 	"github.com/MatthieuCoder/OrionV3/internal"
 	"github.com/MatthieuCoder/OrionV3/internal/proto"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/journald"
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -33,10 +32,7 @@ func main() {
 	// Setup logging
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	flag.Parse()
-	journaldWriter := journald.NewJournalDWriter()
-	log.Logger = log.Output(io.MultiWriter(
-		journaldWriter,
-	))
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	// Default level for this example is info, unless debug flag is present
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	if *enable_prof {
