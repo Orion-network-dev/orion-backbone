@@ -89,7 +89,7 @@ func (c *Session) Authenticate(
 	}
 
 	log.Info().
-		Msgf("User %d (%s) auth with certificate with serial: %s", Event.FriendlyName, Event.MemberId, userCertificate.SerialNumber)
+		Msgf("User %s (%d) auth with certificate with serial: %s", Event.FriendlyName, Event.MemberId, userCertificate.SerialNumber)
 
 	// the user is authenticated, we start listening for global events
 

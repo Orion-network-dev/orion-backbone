@@ -77,6 +77,8 @@ func main() {
 	orionDaemon, err := implementation.NewOrionClientDaemon(
 		ctx,
 		conn,
+		privateKey,
+		chain,
 	)
 	if err != nil {
 		log.Error().Err(err).Msgf("failed to bring up orion client daemon")

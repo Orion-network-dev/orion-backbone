@@ -53,6 +53,8 @@ type OrionClientDaemon struct {
 func NewOrionClientDaemon(
 	Context context.Context,
 	ClientConnection *grpc.ClientConn,
+	privateKey *ecdsa.PrivateKey,
+	chain []*x509.Certificate,
 ) (*OrionClientDaemon, error) {
 	orionClient := OrionClientDaemon{
 		registryClient:     proto.NewRegistryClient(ClientConnection),
@@ -62,6 +64,8 @@ func NewOrionClientDaemon(
 		establishedStream:  broadcast.NewRelay[uint32](),
 		tunnels:            map[uint32]*link.PeerLink{},
 		tunnelsLock:        &sync.RWMutex{},
+		privateKey:         privateKey,
+		chain:              chain,
 	}
 
 	wgClient, err := wgctrl.New()
