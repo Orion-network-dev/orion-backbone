@@ -2,6 +2,7 @@ package link
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"net"
 
@@ -11,6 +12,10 @@ import (
 	"github.com/vishvananda/netlink"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
+)
+
+var (
+	basePort = flag.Uint("override-base-port", 65000, "Override the public port for this instance")
 )
 
 type PeerLink struct {
@@ -44,7 +49,7 @@ func NewPeerLink(
 	if err != nil {
 		return nil, err
 	}
-
+	port := int(*basePort + uint(otherID))
 	tunnel, err := internal.NewWireguardInterface(wgClient, &netlink.LinkAttrs{
 		Name:  fmt.Sprintf("orion%d", otherID),
 		Group: 30,
@@ -52,6 +57,7 @@ func NewPeerLink(
 		PrivateKey:   &privatekey,
 		ReplacePeers: true,
 		Peers:        []wgtypes.PeerConfig{},
+		ListenPort:   &port,
 	})
 	if err != nil {
 		return nil, err
