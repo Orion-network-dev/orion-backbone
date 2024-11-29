@@ -58,7 +58,6 @@ func main() {
 			MinVersion:   tls.VersionTLS13,
 			MaxVersion:   tls.VersionTLS13,
 			ClientAuth:   tls.RequireAndVerifyClientCert,
-			ClientCAs:    authorityPool,
 		},
 	)
 

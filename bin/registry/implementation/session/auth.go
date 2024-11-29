@@ -1,6 +1,7 @@
 package session
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/x509"
@@ -12,6 +13,7 @@ import (
 	"github.com/MatthieuCoder/OrionV3/internal"
 	"github.com/MatthieuCoder/OrionV3/internal/proto"
 	"github.com/rs/zerolog/log"
+	"software.sslmate.com/src/ocsputil"
 )
 
 func generateRandomString(n int) (string, error) {
@@ -56,6 +58,23 @@ func (c *Session) Authenticate(
 		}
 	}
 
+	var issuer *x509.Certificate
+	for block, rest := pem.Decode(Event.Certificate); block != nil; block, rest = pem.Decode(rest) {
+		if block.Type == "CERTIFICATE" {
+			certificate, err := x509.ParseCertificate(block.Bytes)
+			if err == nil && certificate.Subject.String() == userCertificate.Issuer.String() {
+				issuer = certificate
+			}
+		}
+	}
+	if issuer == nil {
+		err := fmt.Errorf("cannot find the issuing certificate")
+		log.Error().
+			Err(err).
+			Msg("cannot find the issuing certificate")
+		return err
+	}
+
 	if _, err := userCertificate.Verify(x509.VerifyOptions{
 		Roots:         RootCertPool,
 		Intermediates: intermediates,
@@ -64,6 +83,15 @@ func (c *Session) Authenticate(
 		log.Debug().
 			Err(err).
 			Msg("user supplied an orion-invalid certificate")
+		return err
+	}
+
+	revoked, _, _ := ocsputil.CheckCert(context.Background(), userCertificate, issuer, &ocsputil.Config{})
+	if revoked {
+		err := fmt.Errorf("certificate is revoked")
+		log.Error().
+			Err(err).
+			Msg("certificate is revoked")
 		return err
 	}
 
