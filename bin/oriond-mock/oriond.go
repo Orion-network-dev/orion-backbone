@@ -11,7 +11,7 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/MatthieuCoder/OrionV3/bin/registry-ws/server/protocol/messages"
+	"github.com/MatthieuCoder/OrionV3/bin/registry/server/protocol/messages"
 	"github.com/MatthieuCoder/OrionV3/internal"
 	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog"

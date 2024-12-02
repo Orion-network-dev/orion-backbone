@@ -46,3 +46,5 @@ golang.zx2c4.com/wireguard v0.0.0-20230325221338-052af4a8072b h1:J1CaxgLerRR5lgx
 golang.zx2c4.com/wireguard v0.0.0-20230325221338-052af4a8072b/go.mod h1:tqur9LnfstdR9ep2LaJT4lFUl0EjlHtge+gAjmsHUG4=
 golang.zx2c4.com/wireguard/wgctrl v0.0.0-20230429144221-925a1e7659e6 h1:CawjfCvYQH2OU3/TnxLx97WDSUDRABfT18pCOYwc2GE=
 golang.zx2c4.com/wireguard/wgctrl v0.0.0-20230429144221-925a1e7659e6/go.mod h1:3rxYc4HtVcSG9gVaTs2GEBdehh+sYPOwKtyUWEOTb80=
+software.sslmate.com/src/ocsputil v0.5.0 h1:mJrX5z7XbHyVFqTpDvCWy+8KuCLn1Dro+5tUoFhix7I=
+software.sslmate.com/src/ocsputil v0.5.0/go.mod h1:cYsyBW9ycE4100TeKI8zqFy74W6/LIj95hZXoh0UBm4=

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/MatthieuCoder/OrionV3/bin/registry-ws/server/protocol/messages"
+	"github.com/MatthieuCoder/OrionV3/bin/registry/server/protocol/messages"
 	"github.com/MatthieuCoder/OrionV3/internal"
 	"github.com/MatthieuCoder/OrionV3/internal/state"
 	"github.com/gorilla/websocket"
@@ -30,7 +30,6 @@ func NewClient(ws *websocket.Conn, identity state.RouterIdentity) *Client {
 		ctx:      context.Background(),
 		log:      log.With().Uint32("router-identity", uint32(identity)).Logger(),
 	}
-
 	c.log.Debug().Msg("starting new client connection")
 	go c.startRoutine()
 	return c

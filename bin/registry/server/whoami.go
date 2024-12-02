@@ -3,6 +3,8 @@ package server
 import (
 	"fmt"
 	"net/http"
+
+	"github.com/rs/zerolog/log"
 )
 
 func (c *Server) whoami(w http.ResponseWriter, r *http.Request) {
@@ -10,6 +12,8 @@ func (c *Server) whoami(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	state := r.TLS
+
+	log.Debug().Msg("handling a whoami request")
 
 	fmt.Fprint(w, ">>>>>>>>>>>>>>>> State <<<<<<<<<<<<<<<<\n")
 
