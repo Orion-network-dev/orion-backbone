@@ -16,8 +16,8 @@ const (
 	// A message sent by a router wanting to connect
 	// to another one.
 	// step1. (peer1) ---> (registry) ---> (peer2)
-	MessageKindRouterEdgeInitStep1 = "edge_initiate"
+	MessageKindRouterEdgeInitConnectRequest = "edge_create_request"
 	// A message considered as a response of stage1.
 	// step2. (peer2) ---> (registry) ---> (peer1)
-	MessageKindRouterEdgeInitStep2 = "edge_create_request"
+	MessageKindRouterEdgeInitConnectRequestResponse = "edge_create_request_ack"
 )

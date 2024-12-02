@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
@@ -10,7 +11,9 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/MatthieuCoder/OrionV3/bin/registry/server/protocol/messages"
 	"github.com/MatthieuCoder/OrionV3/internal"
+	"github.com/MatthieuCoder/OrionV3/internal/state"
 	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -23,6 +26,11 @@ var (
 	pprof          = flag.String("debug-pprof", "0.0.0.0:6061", "")
 	registryPort   = flag.Uint("registry-port", 6443, "the port used by the registry")
 )
+
+type Event struct {
+	Kind    string          `json:"k"`
+	Content json.RawMessage `json:"e"`
+}
 
 func main() {
 	interrupt := make(chan os.Signal, 1)
@@ -85,6 +93,46 @@ func main() {
 				return
 			}
 			log.Printf("recv: %s", message)
+
+			msg := Event{}
+			json.Unmarshal(message, &msg)
+
+			log.Printf("received %s... handling", msg.Kind)
+
+			switch msg.Kind {
+			case messages.MessageKindHello:
+				hello := messages.Hello{}
+				if err := json.Unmarshal(msg.Content, &hello); err != nil {
+					panic("invalid json")
+				}
+				log.Printf("Hello message: %s", hello.Message)
+				continue
+			case messages.MessageKindRouterConnect:
+				router_connect := state.RouterConnectEvent{}
+				if err := json.Unmarshal(msg.Content, &router_connect); err != nil {
+					panic("invalid json")
+				}
+				log.Printf("Router connected: %d", router_connect.Router.Identity)
+
+				// todo: send request after provisionning the wireguard request
+
+				continue
+			case messages.MessageKindRouterDisconnect:
+				router_connect := state.RouterDisconnectEvent{}
+				if err := json.Unmarshal(msg.Content, &router_connect); err != nil {
+					panic("invalid json")
+				}
+				log.Printf("Router disconnected: %d", router_connect.Router.Identity)
+				continue
+			case messages.MessageKindRouterEdgeInitConnectRequest:
+				log.Printf("connect request received")
+			case messages.MessageKindRouterEdgeInitConnectRequestResponse:
+				log.Printf("connect request ack received")
+				continue
+			default:
+				log.Printf("unroceverable error")
+				panic("invalid kind")
+			}
 
 		}
 	}()

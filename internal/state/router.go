@@ -91,8 +91,6 @@ func (c *Router) updateConnectionsCountRoutine() {
 		ctx, e := context.WithCancelCause(context.Background())
 		c.connectionTimeoutContextCancel = e
 
-		// TODO: we must implement a way to deal with not-sent messages
-
 		// we launch a background task ticking for either
 		// 	1. the session timeout mechanism
 		//	2. a new connection
@@ -143,19 +141,23 @@ func (c *Router) updateConnectionsCountRoutine() {
 }
 
 func (c *Router) DispatchNewRouterEvent(router *Router) {
-	c.sending.Broadcast(RouterConnect{
+	c.sending.Broadcast(RouterConnectEvent{
 		Router: router,
 	})
 }
 
 func (c *Router) DispatchRouterRemovedEvent(router *Router) {
-	c.sending.Broadcast(RouterDisconnect{
+	c.sending.Broadcast(RouterDisconnectEvent{
 		Router: router,
 	})
 }
 
+func (c *Router) DispatchNewEdgeEvent(edge *Edge) {
+
+}
+func (c *Router) DispatchEdgeRemovedEvent(edge *Edge) {}
+
 func (c *Router) dispose() {
-	c.log.Info().Msg("disposing of router")
 	c.routerObjectContextCancel(fmt.Errorf("router is disposed"))
 	c.log.Debug().Msg("context canceled")
 }

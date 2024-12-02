@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	pprof         = flag.String("debug-pprof", ":6060", "")
+	pprof         = flag.String("debug-pprof", "127.0.0.1:6060", "")
 	enable_prof   = flag.Bool("enable-pprof", false, "enable pprof for debugging")
 	debug         = flag.Bool("debug", false, "change the log level to debug")
 	listeningHost = flag.String("listen-host", "127.0.0.1:6443", "the port the server will listen on")

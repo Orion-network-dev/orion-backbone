@@ -101,10 +101,10 @@ func (c *Client) startRoutine(sessionId string) {
 			select {
 			case event := <-channel:
 				switch event := event.(type) {
-				case state.RouterConnect:
+				case state.RouterConnectEvent:
 					c.log.Debug().Msg("sending a new router connect event")
 					c.send(messages.MessageKindRouterConnect, event)
-				case state.RouterDisconnect:
+				case state.RouterDisconnectEvent:
 					c.log.Debug().Msg("sending a new disconnect event")
 					c.send(messages.MessageKindRouterDisconnect, event)
 				}
