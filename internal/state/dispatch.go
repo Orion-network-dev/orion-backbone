@@ -19,9 +19,7 @@ func (c *OrionRegistryState) DispatchNewRouterEvent(
 
 	for _, router := range c.routers {
 		if router.Identity != newRouter.Identity {
-			router.DispatchNewRouterEvent(
-				router,
-			)
+			router.DispatchNewRouterEvent(newRouter)
 		}
 	}
 }
@@ -41,11 +39,11 @@ func (c *OrionRegistryState) DispatchRouterRemovedEvent(
 		// todo: send event to other peers
 		if router.Identity != deletedRouter.Identity {
 			// todo: send event
-			//		router.DeletedRouterEvent()
+			router.DispatchRouterRemovedEvent(deletedRouter)
 		}
 	}
 
-	c.routers[deletedRouter.Identity].Dispose()
+	c.routers[deletedRouter.Identity].dispose()
 	c.routers[deletedRouter.Identity] = nil
 }
 

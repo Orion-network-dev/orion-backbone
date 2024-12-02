@@ -9,4 +9,5 @@ type Hello struct {
 	Identity state.RouterIdentity `json:"identity"`
 	Version  string               `json:"version"`
 	Commit   string               `json:"commit"`
+	Session  string               `json:"session"`
 }

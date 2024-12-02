@@ -23,7 +23,7 @@ type Client struct {
 	log zerolog.Logger
 }
 
-func NewClient(ws *websocket.Conn, identity state.RouterIdentity) *Client {
+func NewClient(ws *websocket.Conn, identity state.RouterIdentity, sessionId string) *Client {
 	c := &Client{
 		ws:       ws,
 		identity: identity,
@@ -31,7 +31,7 @@ func NewClient(ws *websocket.Conn, identity state.RouterIdentity) *Client {
 		log:      log.With().Uint32("router-identity", uint32(identity)).Logger(),
 	}
 	c.log.Debug().Msg("starting new client connection")
-	go c.startRoutine()
+	go c.startRoutine(sessionId)
 	return c
 }
 
@@ -46,14 +46,9 @@ func (c *Client) send(k string, msg state.Event) error {
 	return err
 }
 
-func (c *Client) startRoutine() {
+func (c *Client) startRoutine(sessionId string) {
+	defer c.ws.Close()
 	c.log.Debug().Msg("connection handling routine started")
-	c.send(messages.MessageKindHello, messages.Hello{
-		Message:  "Hi. This is orion-registry.",
-		Identity: c.identity,
-		Version:  internal.Version,
-		Commit:   internal.Commit,
-	})
 
 	// check if the router exists
 	rtrs := orionRegistryState.GetRouters()
@@ -65,22 +60,43 @@ func (c *Client) startRoutine() {
 		orionRegistryState.DispatchNewRouterEvent(
 			rtr,
 		)
-		c.router = rtr
 	} else {
-		c.log.Debug().Msg("re-using an existing router object system")
-		// we inform the router object, in the registry state
-		// that the connection is still ongoing and should not
-		// be idle-disposed.
-		c.router = rtr
+		if rtr.SessionId() == sessionId {
+			c.log.Debug().Msg("re-using an existing router object system")
+			// we inform the router object, in the registry state
+			// that the connection is still ongoing and should not
+			// be idle-disposed.
+			c.router = rtr
+		} else {
+			c.log.Debug().Msg("deleted old session, initializing new session")
+			rtr.Dispose()
+			rtr = state.NewRouter(context.Background(), c.identity, orionRegistryState)
+			// dispatch new router if the given router doesn't exist
+			orionRegistryState.DispatchNewRouterEvent(
+				rtr,
+			)
+		}
 	}
+	c.router = rtr
 
-	sub := c.router.Subscribe()
-	channel := sub.Ch()
+	// we send the hello message
+	c.send(messages.MessageKindHello, messages.Hello{
+		Message:  "Hi. This is orion-registry.",
+		Identity: c.router.Identity,
+		Version:  internal.Version,
+		Commit:   internal.Commit,
+		Session:  c.router.SessionId(),
+	})
+
 	ctx, cancel := context.WithCancelCause(c.ctx)
-	defer sub.Close()
 
 	go func() {
-		// listening for events
+		// subscribe to the client events from the state
+		sub := c.router.Subscribe()
+		channel := sub.Ch()
+		defer sub.Close()
+
+		// listening for events on the stream
 		for {
 			select {
 			case event := <-channel:
@@ -92,19 +108,18 @@ func (c *Client) startRoutine() {
 					c.log.Debug().Msg("sending a new disconnect event")
 					c.send(messages.MessageKindRouterDisconnect, event)
 				}
-			case <-c.ctx.Done():
-				goto end
+			case <-ctx.Done():
+				c.log.Debug().Msg("server state listening routine is done")
+				return
 			}
 		}
-
-	end:
-		cancel(fmt.Errorf("the state-internal event listener is finished"))
 	}()
 
 	// We start listening for events once the listener go-routine is setup
 	// this is because the increment connection count trigers a recovery
 	// of a lost connection
 	rtr.IncrementConnectionCount()
+	defer c.router.DecrementConnectionCount()
 
 	go func() {
 		for {
@@ -123,8 +138,5 @@ func (c *Client) startRoutine() {
 	// wait for the context to be finished
 	<-ctx.Done()
 
-	c.log.Info().Msg("connection ended")
-	c.router.DecrementConnectionCount()
-
-	c.ws.Close()
+	c.log.Info().Err(context.Cause(ctx)).Msg("connection routine ended")
 }

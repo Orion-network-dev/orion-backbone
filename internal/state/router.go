@@ -9,6 +9,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/teivah/broadcast"
+	"golang.org/x/exp/rand"
 )
 
 type RouterIdentity uint32
@@ -22,8 +23,20 @@ type Router struct {
 	connectionsCount               atomic.Int32
 	connectionTimeoutContextCancel context.CancelCauseFunc
 
+	session string
+
 	globalState *OrionRegistryState
 	log         zerolog.Logger
+}
+
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+func randStringBytes(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+	return string(b)
 }
 
 func NewRouter(
@@ -32,6 +45,9 @@ func NewRouter(
 	globalState *OrionRegistryState,
 ) *Router {
 	ctx, cancel := context.WithCancelCause(globalContext)
+	session := randStringBytes(128)
+	logger := log.With().Uint32("router-identity", uint32(identity)).Logger()
+	logger.Debug().Str("session", session).Msg("new router session initiated")
 	return &Router{
 		Identity:                  identity,
 		connectionsCount:          atomic.Int32{},
@@ -39,8 +55,13 @@ func NewRouter(
 		routerObjectContext:       ctx,
 		routerObjectContextCancel: cancel,
 		globalState:               globalState,
-		log:                       log.With().Uint32("router-identity", uint32(identity)).Logger(),
+		session:                   session,
+		log:                       logger,
 	}
+}
+
+func (c *Router) SessionId() string {
+	return c.session
 }
 
 func (c *Router) Subscribe() *broadcast.Listener[Event] {
@@ -60,7 +81,6 @@ func (c *Router) updateConnectionsCountRoutine() {
 	current := c.connectionsCount.Load()
 
 	c.log.Debug().
-		Int32("connections-count", current).
 		Msg("connection count ended, updating")
 
 	if c.connectionTimeoutContextCancel != nil {
@@ -81,14 +101,16 @@ func (c *Router) updateConnectionsCountRoutine() {
 			c.log.Debug().Msg("ticking a minute before session expiration")
 
 			subscribe := c.Subscribe()
-			replayPending := make([]*Event, 1000)
+			defer subscribe.Close()
+
+			replayPending := make([]Event, 1000)
 			replayEventsCount := 0
 
 			for {
 				select {
 				case message := <-subscribe.Ch():
 					log.Debug().Msg("appending to replay pending messages")
-					replayPending[replayEventsCount] = &message
+					replayPending[replayEventsCount] = message
 					replayEventsCount += 1
 				case <-ctx.Done():
 					subscribe.Close()
@@ -107,8 +129,9 @@ func (c *Router) updateConnectionsCountRoutine() {
 					goto end
 				case <-timeout.C:
 					log.Debug().Msg("session expired")
-					subscribe.Close()
-					c.globalState.DispatchRouterRemovedEvent(c)
+					c.Dispose()
+					goto end
+				case <-c.routerObjectContext.Done():
 					goto end
 				}
 			}
@@ -120,12 +143,23 @@ func (c *Router) updateConnectionsCountRoutine() {
 }
 
 func (c *Router) DispatchNewRouterEvent(router *Router) {
-	newRouterEvent := RouterConnect{
+	c.sending.Broadcast(RouterConnect{
 		Router: router,
-	}
-	c.sending.Broadcast(newRouterEvent)
+	})
+}
+
+func (c *Router) DispatchRouterRemovedEvent(router *Router) {
+	c.sending.Broadcast(RouterDisconnect{
+		Router: router,
+	})
+}
+
+func (c *Router) dispose() {
+	c.log.Info().Msg("disposing of router")
+	c.routerObjectContextCancel(fmt.Errorf("router is disposed"))
+	c.log.Debug().Msg("context canceled")
 }
 
 func (c *Router) Dispose() {
-	log.Info().Msg("disposing of router")
+	c.globalState.DispatchRouterRemovedEvent(c)
 }

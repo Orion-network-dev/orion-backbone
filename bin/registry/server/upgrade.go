@@ -47,5 +47,7 @@ func (c *Server) upgrade(w http.ResponseWriter, r *http.Request) {
 	}
 	identity := state.RouterIdentity(routerId)
 
-	protocol.NewClient(cz, identity)
+	sessionId := r.Header.Get("X-SessionId")
+
+	protocol.NewClient(cz, identity, sessionId)
 }

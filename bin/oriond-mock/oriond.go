@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/tls"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
@@ -11,7 +10,6 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/MatthieuCoder/OrionV3/bin/registry/server/protocol/messages"
 	"github.com/MatthieuCoder/OrionV3/internal"
 	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog"
@@ -87,17 +85,6 @@ func main() {
 				return
 			}
 			log.Printf("recv: %s", message)
-
-			msg := messages.Event{}
-			json.Unmarshal(message, &msg)
-
-			log.Printf("received %s... handling", msg.Kind)
-
-			switch msg.Content {
-			case messages.MessageKindHello:
-				hello := msg.Content.(*messages.Hello)
-				log.Printf("Hello message: %s", hello.Message)
-			}
 
 		}
 	}()
