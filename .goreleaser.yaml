@@ -58,10 +58,12 @@ nfpms:
     dependencies:
       - wireguard
       - frr
+      - frr-pythontools
     bindir: /usr/bin
 
     scripts:
       preinstall: ./packaging/preinstall.sh
+      postinstall: ./packaging/postinstall.sh
 
     # Version Release.
     release: 1
@@ -106,12 +108,12 @@ nfpms:
 
     # Custom configuration applied only to the RPM packager.
     rpm:
-      summary: OrionV3 is the backbone for the Orion Network
+      summary: Orion Backbone is the backbone for the Orion Network
 
     # Custom configuration applied only to the Deb packager.
     deb:
       fields:
-        Bugs: https://github.com/MatthieuCoder/OrionV3
+        Bugs: https://github.com/Orion-network-dev/orion-backbone
 
     apk:
       signature:
