@@ -19,6 +19,11 @@ builds:
       - CGO_ENABLED=0
     goos:
       - linux
+    goarch:
+      - amd64
+      - arm
+      - arm64
+      - riscv64
     main: ./bin/oriond
     id: "oriond"
     binary: oriond
@@ -51,7 +56,7 @@ nfpms:
     bindir: /usr/bin
 
     scripts:
-      postinstall: ./packaging/postinstall.sh
+      preinstall: ./packaging/preinstall.sh
 
     # Version Release.
     release: 1
@@ -69,24 +74,30 @@ nfpms:
       # Service files
       - src: packaging/orion-registry.service
         dst: /etc/systemd/system/orion-registry.service
-        type: "config|noreplace"
+        type: "config"
       - src: packaging/oriond.service
         dst: /etc/systemd/system/oriond.service
-        type: "config|noreplace"
+        type: "config"
       # Default files
       - src: packaging/oriond
         dst: /etc/default/oriond
-        type: "config|noreplace"
+        type: "config"
       - src: packaging/orion-registry
         dst: /etc/default/orion-registry
-        type: "config|noreplace"
+        type: "config"
       - src: packaging/frr.conf.tmpl
         dst: /etc/oriond/frr.conf.tmpl
-        type: "config|noreplace"
+        type: "config"
       # Root CA
       - src: packaging/ca.crt
         dst: /etc/oriond/
-        type: "config|noreplace"
+        type: "config"
+      - src: packaging/daemons
+        dst: /etc/frr/daemons
+        type: "config"
+      - src: packaging/sysctl.conf
+        dst: /etc/sysctl.d/00-orion-routing.conf
+        type: "config"
 
     # Custom configuration applied only to the RPM packager.
     rpm:
