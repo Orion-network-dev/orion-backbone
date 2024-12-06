@@ -146,12 +146,6 @@ func (c *Router) DispatchNewRouterEvent(router *Router) {
 	})
 }
 
-func (c *Router) DispatchRouterRemovedEvent(router *Router) {
-	c.sending.Broadcast(RouterDisconnectEvent{
-		Router: router,
-	})
-}
-
 func (c *Router) DispatchNewEdgeEvent(edge *Edge) {
 
 }

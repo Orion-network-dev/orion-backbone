@@ -14,6 +14,3 @@ type Hello struct {
 	Commit   string               `json:"commit"`
 	Session  string               `json:"session"`
 }
-
-type RouterConnectedEvent state.RouterConnectEvent
-type RouterDisconnectedEvent state.RouterDisconnectEvent

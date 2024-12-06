@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/MatthieuCoder/OrionV3/bin/registry/server/protocol/messages"
@@ -104,9 +105,6 @@ func (c *Client) startRoutine(sessionId string) {
 				case state.RouterConnectEvent:
 					c.log.Debug().Msg("sending a new router connect event")
 					c.send(messages.MessageKindRouterConnect, event)
-				case state.RouterDisconnectEvent:
-					c.log.Debug().Msg("sending a new disconnect event")
-					c.send(messages.MessageKindRouterDisconnect, event)
 				}
 			case <-ctx.Done():
 				c.log.Debug().Msg("server state listening routine is done")
@@ -123,12 +121,21 @@ func (c *Client) startRoutine(sessionId string) {
 
 	go func() {
 		for {
-			_, _, err := c.ws.ReadMessage()
+			_, data, err := c.ws.ReadMessage()
 			if err != nil {
 				goto end
 			}
 
-			// todo: handle clients events
+			event := state.JsonEvent{}
+			if err := json.Unmarshal(data, &event); err != nil {
+				goto end
+			}
+
+			switch event.Kind {
+			case messages.MessageKindRouterEdgeConnectInitializeRequest:
+			case messages.MessageKindRouterConnect:
+			case messages.MessageKindRouterEdgeTeardown:
+			}
 		}
 
 	end:

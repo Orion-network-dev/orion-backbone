@@ -60,12 +60,6 @@ func (c *OrionRegistryState) DispatchRouterRemovedEvent(
 	c.routersLock.Lock()
 	defer c.routersLock.Unlock()
 
-	for _, router := range c.routers {
-		if router.Identity != deletedRouter.Identity {
-			router.DispatchRouterRemovedEvent(deletedRouter)
-		}
-	}
-
 	c.routers[deletedRouter.Identity].dispose()
 	c.routers[deletedRouter.Identity] = nil
 }

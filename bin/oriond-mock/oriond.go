@@ -22,15 +22,9 @@ import (
 var (
 	enable_prof    = flag.Bool("enable-pprof", false, "enable pprof for debugging")
 	debug          = flag.Bool("debug", false, "change the log level to debug")
-	registryServer = flag.String("registry-server", "reg.orionet.re", "the address of the registry server")
+	registryServer = flag.String("registry-server", "reg.orionet.re:6443", "the address of the registry server")
 	pprof          = flag.String("debug-pprof", "0.0.0.0:6061", "")
-	registryPort   = flag.Uint("registry-port", 6443, "the port used by the registry")
 )
-
-type Event struct {
-	Kind    string          `json:"k"`
-	Content json.RawMessage `json:"e"`
-}
 
 func main() {
 	interrupt := make(chan os.Signal, 1)
@@ -53,7 +47,7 @@ func main() {
 
 	url := url.URL{
 		Scheme: "wss",
-		Host:   "reg.orionet.re:6443",
+		Host:   *registryServer,
 		Path:   "/ws",
 	}
 
@@ -94,7 +88,7 @@ func main() {
 			}
 			log.Printf("recv: %s", message)
 
-			msg := Event{}
+			msg := state.JsonEvent{}
 			json.Unmarshal(message, &msg)
 
 			log.Printf("received %s... handling", msg.Kind)
@@ -117,16 +111,9 @@ func main() {
 				// todo: send request after provisionning the wireguard request
 
 				continue
-			case messages.MessageKindRouterDisconnect:
-				router_connect := state.RouterDisconnectEvent{}
-				if err := json.Unmarshal(msg.Content, &router_connect); err != nil {
-					panic("invalid json")
-				}
-				log.Printf("Router disconnected: %d", router_connect.Router.Identity)
-				continue
-			case messages.MessageKindRouterEdgeInitConnectRequest:
-				log.Printf("connect request received")
-			case messages.MessageKindRouterEdgeInitConnectRequestResponse:
+			case messages.MessageKindRouterEdgeConnectInitializeResponse:
+			case messages.MessageKindRouterEdgeConnectInitializeRequest:
+			case messages.MessageKindRouterEdgeTeardown:
 				log.Printf("connect request ack received")
 				continue
 			default:
