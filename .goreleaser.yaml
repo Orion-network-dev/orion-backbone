@@ -27,6 +27,12 @@ builds:
     main: ./bin/oriond
     id: "oriond"
     binary: oriond
+    # Custom ldflags.
+    #
+    # Default: '-s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}} -X main.builtBy=goreleaser'.
+    # Templates: allowed.
+    ldflags:
+      - s -w -X internal.Version={{.Version}} -X internal.Commit={{.Commit}} -X internal.Date={{.Date}} -X internal.BuiltBy=goreleaser
   # Build for the `orion-registry` daemon
   - env:
       - CGO_ENABLED=0
