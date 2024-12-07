@@ -19,6 +19,11 @@ builds:
       - CGO_ENABLED=0
     goos:
       - linux
+    goarch:
+      - amd64
+      - arm
+      - arm64
+      - riscv64
     main: ./bin/oriond
     id: "oriond"
     binary: oriond
@@ -33,6 +38,11 @@ builds:
       - CGO_ENABLED=0
     goos:
       - linux
+    goarch:
+      - amd64
+      - arm
+      - arm64
+      - riscv64
     main: ./bin/registry
     id: "registry"
     binary: orion-registry
@@ -54,9 +64,11 @@ nfpms:
     dependencies:
       - wireguard
       - frr
+      - frr-pythontools
     bindir: /usr/bin
 
     scripts:
+      preinstall: ./packaging/preinstall.sh
       postinstall: ./packaging/postinstall.sh
 
     # Version Release.
@@ -75,33 +87,39 @@ nfpms:
       # Service files
       - src: packaging/orion-registry.service
         dst: /etc/systemd/system/orion-registry.service
-        type: "config|noreplace"
+        type: "config"
       - src: packaging/oriond.service
         dst: /etc/systemd/system/oriond.service
-        type: "config|noreplace"
+        type: "config"
       # Default files
       - src: packaging/oriond
         dst: /etc/default/oriond
-        type: "config|noreplace"
+        type: "config"
       - src: packaging/orion-registry
         dst: /etc/default/orion-registry
-        type: "config|noreplace"
+        type: "config"
       - src: packaging/frr.conf.tmpl
         dst: /etc/oriond/frr.conf.tmpl
-        type: "config|noreplace"
+        type: "config"
       # Root CA
       - src: packaging/ca.crt
         dst: /etc/oriond/
-        type: "config|noreplace"
+        type: "config"
+      - src: packaging/daemons
+        dst: /etc/frr/daemons
+        type: "config"
+      - src: packaging/sysctl.conf
+        dst: /etc/sysctl.d/00-orion-routing.conf
+        type: "config"
 
     # Custom configuration applied only to the RPM packager.
     rpm:
-      summary: OrionV3 is the backbone for the Orion Network
+      summary: Orion Backbone is the backbone for the Orion Network
 
     # Custom configuration applied only to the Deb packager.
     deb:
       fields:
-        Bugs: https://github.com/MatthieuCoder/OrionV3
+        Bugs: https://github.com/Orion-network-dev/orion-backbone
 
     apk:
       signature:
