@@ -44,7 +44,9 @@ func (c *OrionRegistryState) DispatchNewRouterEvent(
 
 	for _, router := range c.routers {
 		if router.Identity != newRouter.Identity {
-			router.DispatchNewRouterEvent(newRouter)
+			router.Disatch(RouterConnectEvent{
+				Router: newRouter,
+			})
 		}
 	}
 }
@@ -68,9 +70,6 @@ func (c *OrionRegistryState) DispatchRouterRemovedEvent(
 func (c *OrionRegistryState) DispatchNewEdge(
 	edge *Edge,
 ) {
-	c.edgesLock.Lock()
-	defer c.edgesLock.Unlock()
-
 	routerA := edge.RouterA
 	routerB := edge.RouterB
 
@@ -80,23 +79,28 @@ func (c *OrionRegistryState) DispatchNewEdge(
 		return
 	}
 
+	c.edgesLock.Lock()
+	defer c.edgesLock.Unlock()
+
 	// concatenate the bits
 	edgeId := edge.EdgeId()
 	c.edges[edgeId] = edge
-	routerA.DispatchNewEdgeEvent(edge)
-	routerB.DispatchNewEdgeEvent(edge)
+
+	edge.Initialize()
 }
 
 func (c *OrionRegistryState) DispatchEdgeRemovedEvent(edge *Edge) {
-	if c.routers[RouterIdentity(edge.EdgeId())] == nil {
+	log.Debug().Msg("edge got removed")
+
+	if c.edges[edge.EdgeId()] == nil {
 		return
 	}
 
-	c.routersLock.Lock()
-	defer c.routersLock.Unlock()
+	c.edgesLock.Lock()
+	defer c.edgesLock.Unlock()
 
-	edge.RouterA.DispatchEdgeRemovedEvent(edge)
-	edge.RouterB.DispatchEdgeRemovedEvent(edge)
+	// edge.RouterA.DispatchEdgeRemovedEvent(edge)
+	// edge.RouterB.DispatchEdgeRemovedEvent(edge)
 
 	c.edges[edge.EdgeId()].dispose()
 	c.edges[edge.EdgeId()] = nil

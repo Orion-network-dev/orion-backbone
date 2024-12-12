@@ -11,7 +11,6 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/MatthieuCoder/OrionV3/bin/registry/server/protocol/messages"
 	"github.com/MatthieuCoder/OrionV3/internal"
 	"github.com/MatthieuCoder/OrionV3/internal/state"
 	"github.com/gorilla/websocket"
@@ -93,28 +92,24 @@ func main() {
 
 			log.Printf("received %s... handling", msg.Kind)
 
-			switch msg.Kind {
-			case messages.MessageKindHello:
-				hello := messages.Hello{}
-				if err := json.Unmarshal(msg.Content, &hello); err != nil {
-					panic("invalid json")
-				}
-				log.Printf("Hello message: %s", hello.Message)
-				continue
-			case messages.MessageKindRouterConnect:
-				router_connect := state.RouterConnectEvent{}
-				if err := json.Unmarshal(msg.Content, &router_connect); err != nil {
-					panic("invalid json")
-				}
-				log.Printf("Router connected: %d", router_connect.Router.Identity)
+			out, err := state.UnmarshalEvent(msg)
+			if err != nil {
+				log.Print("read:", err)
+				return
+			}
 
-				// todo: send request after provisionning the wireguard request
-
+			switch message := out.(type) {
+			case state.Hello:
+				log.Printf("Hello message: %s", message.Message)
 				continue
-			case messages.MessageKindRouterEdgeConnectInitializeResponse:
-			case messages.MessageKindRouterEdgeConnectInitializeRequest:
-			case messages.MessageKindRouterEdgeTeardown:
-				log.Printf("connect request ack received")
+			case state.RouterConnectEvent:
+				log.Printf("router joined: %d", message.Router.Identity)
+
+				ev, _ := state.MarshalEvent(state.RouterInitiateRequest{
+					Identity: &message.Router.Identity,
+				})
+				c.WriteJSON(ev)
+
 				continue
 			default:
 				log.Printf("unroceverable error")

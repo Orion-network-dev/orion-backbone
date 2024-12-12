@@ -61,13 +61,14 @@ func (c *Edge) Initialize() {
 		case <-c.RouterA.routerObjectContext.Done():
 		case <-c.RouterB.routerObjectContext.Done():
 		case <-c.edgeObjectContext.Done():
+			c.log.Debug().Err(c.edgeObjectContext.Err()).Msg("edge context is finished")
+			return
 		}
-
-		// the edge lifetime is finished
-		// todo: teardown edge
-		c.globalState.DispatchEdgeRemovedEvent(c)
+		c.Dispose()
+		c.log.Debug().Msg("starting edge disposal")
 	}()
 
+	c.log.Debug().Msg("edge instance started")
 }
 
 func (c *Edge) Dispose() {

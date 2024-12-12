@@ -16,14 +16,14 @@ type RouterIdentity uint32
 type Router struct {
 	Identity RouterIdentity
 
-	sending *broadcast.Relay[Event]
+	sending *broadcast.Relay[*JsonEvent]
 
 	routerObjectContext            context.Context
 	routerObjectContextCancel      context.CancelCauseFunc
 	connectionsCount               atomic.Int32
 	connectionTimeoutContextCancel context.CancelCauseFunc
-
-	session string
+	pendingTeardown                bool
+	session                        string
 
 	globalState *OrionRegistryState
 	log         zerolog.Logger
@@ -51,12 +51,13 @@ func NewRouter(
 	return &Router{
 		Identity:                  identity,
 		connectionsCount:          atomic.Int32{},
-		sending:                   broadcast.NewRelay[Event](),
+		sending:                   broadcast.NewRelay[*JsonEvent](),
 		routerObjectContext:       ctx,
 		routerObjectContextCancel: cancel,
 		globalState:               globalState,
 		session:                   session,
 		log:                       logger,
+		pendingTeardown:           false,
 	}
 }
 
@@ -64,7 +65,7 @@ func (c *Router) SessionId() string {
 	return c.session
 }
 
-func (c *Router) Subscribe() *broadcast.Listener[Event] {
+func (c *Router) Subscribe() *broadcast.Listener[*JsonEvent] {
 	return c.sending.Listener(1)
 }
 
@@ -78,6 +79,9 @@ func (c *Router) DecrementConnectionCount() {
 }
 
 func (c *Router) updateConnectionsCountRoutine() {
+	if c.pendingTeardown {
+		return
+	}
 	current := c.connectionsCount.Load()
 
 	c.log.Debug().
@@ -95,13 +99,13 @@ func (c *Router) updateConnectionsCountRoutine() {
 		// 	1. the session timeout mechanism
 		//	2. a new connection
 		go func() {
-			timeout := time.NewTimer(time.Minute)
+			timeout := time.NewTimer(time.Second * 10)
 			c.log.Debug().Msg("ticking a minute before session expiration")
 
 			subscribe := c.Subscribe()
 			defer subscribe.Close()
 
-			replayPending := make([]Event, 1000)
+			replayPending := make([]*JsonEvent, 1000)
 			replayEventsCount := 0
 
 			for {
@@ -140,20 +144,20 @@ func (c *Router) updateConnectionsCountRoutine() {
 
 }
 
-func (c *Router) DispatchNewRouterEvent(router *Router) {
-	c.sending.Broadcast(RouterConnectEvent{
-		Router: router,
-	})
+func (c *Router) Disatch(router Event) {
+	value, err := MarshalEvent(router)
+	if err != nil {
+		log.Error().Err(err).Msg("couldn't dispatch new event")
+		return
+	}
+	c.sending.Broadcast(value)
 }
-
-func (c *Router) DispatchNewEdgeEvent(edge *Edge) {
-
-}
-func (c *Router) DispatchEdgeRemovedEvent(edge *Edge) {}
 
 func (c *Router) dispose() {
+	c.pendingTeardown = true
 	c.routerObjectContextCancel(fmt.Errorf("router is disposed"))
 	c.log.Debug().Msg("context canceled")
+	c.sending.Close()
 }
 
 func (c *Router) Dispose() {

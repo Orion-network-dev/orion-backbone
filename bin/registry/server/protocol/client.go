@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/MatthieuCoder/OrionV3/bin/registry/server/protocol/messages"
 	"github.com/MatthieuCoder/OrionV3/internal"
 	"github.com/MatthieuCoder/OrionV3/internal/state"
 	"github.com/gorilla/websocket"
@@ -36,11 +35,8 @@ func NewClient(ws *websocket.Conn, identity state.RouterIdentity, sessionId stri
 	return c
 }
 
-func (c *Client) send(k string, msg state.Event) error {
-	err := c.ws.WriteJSON(messages.Event{
-		Kind:    k,
-		Content: msg,
-	})
+func (c *Client) send(event *state.JsonEvent) error {
+	err := c.ws.WriteJSON(event)
 	if err != nil {
 		c.log.Error().Err(err).Msg("failed to send message")
 	}
@@ -79,15 +75,15 @@ func (c *Client) startRoutine(sessionId string) {
 		}
 	}
 	c.router = rtr
-
-	// we send the hello message
-	c.send(messages.MessageKindHello, messages.Hello{
+	event, _ := state.MarshalEvent(state.Hello{
 		Message:  "Hi. This is orion-registry.",
 		Identity: c.router.Identity,
 		Version:  internal.Version,
 		Commit:   internal.Commit,
 		Session:  c.router.SessionId(),
 	})
+	// we send the hello message
+	c.send(event)
 
 	ctx, cancel := context.WithCancelCause(c.ctx)
 
@@ -101,11 +97,7 @@ func (c *Client) startRoutine(sessionId string) {
 		for {
 			select {
 			case event := <-channel:
-				switch event := event.(type) {
-				case state.RouterConnectEvent:
-					c.log.Debug().Msg("sending a new router connect event")
-					c.send(messages.MessageKindRouterConnect, event)
-				}
+				c.send(event)
 			case <-ctx.Done():
 				c.log.Debug().Msg("server state listening routine is done")
 				return
@@ -128,13 +120,33 @@ func (c *Client) startRoutine(sessionId string) {
 
 			event := state.JsonEvent{}
 			if err := json.Unmarshal(data, &event); err != nil {
+				c.log.Error().Err(err).Msg("failed to parse jsonevent")
+				goto end
+			}
+			out, err := state.UnmarshalEvent(event)
+			if err != nil {
+				c.log.Error().Err(err).Msg("failed to parse event")
 				goto end
 			}
 
-			switch event.Kind {
-			case messages.MessageKindRouterEdgeConnectInitializeRequest:
-			case messages.MessageKindRouterConnect:
-			case messages.MessageKindRouterEdgeTeardown:
+			switch message := out.(type) {
+			// sent once a router wants to connect to another one
+			case state.RouterInitiateRequest:
+				c.log.Info().Msgf("received a router connect event to %d", *message.Identity)
+
+				routers := orionRegistryState.GetRouters()
+				if routers[*message.Identity] == nil || routers[c.identity] == nil {
+					goto end
+				}
+
+				orionRegistryState.DispatchNewEdge(
+					state.NewEdge(context.Background(), routers[*message.Identity], routers[c.identity], orionRegistryState),
+				)
+
+				continue
+			default:
+				c.log.Error().Str("event", event.Kind).Msg("unknown event type")
+				goto end
 			}
 		}
 

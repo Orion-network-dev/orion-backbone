@@ -47,7 +47,7 @@ func main() {
 	tlsConfig := &tls.Config{
 		Certificates:     []tls.Certificate{certificateKeyPair},
 		ClientCAs:        authorityPool,
-		ClientAuth:       tls.VerifyClientCertIfGiven,
+		ClientAuth:       tls.RequestClientCert,
 		MinVersion:       tls.VersionTLS13,
 		CurvePreferences: []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
 		CipherSuites: []uint16{

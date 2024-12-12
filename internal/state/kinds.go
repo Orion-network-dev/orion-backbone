@@ -1,4 +1,4 @@
-package messages
+package state
 
 const (
 	// Event sent at the beginning for a new connection
