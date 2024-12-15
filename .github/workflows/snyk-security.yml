@@ -1,5 +1,6 @@
 name: Snyk Scan
 on: push
+
 jobs:
   security:
     runs-on: ubuntu-latest
