@@ -32,7 +32,6 @@ func main() {
 	// Setup logging
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	flag.Parse()
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	// Default level for this example is info, unless debug flag is present
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	if *enable_prof {
@@ -41,6 +40,7 @@ func main() {
 		}()
 	}
 	if *debug {
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 	privateKey, chain := internal.LoadPemFile()
