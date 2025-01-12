@@ -95,7 +95,6 @@ func main() {
 			out, err := state.UnmarshalEvent(msg)
 			if err != nil {
 				log.Print("read:", err)
-				return
 			}
 
 			switch message := out.(type) {
@@ -112,8 +111,7 @@ func main() {
 
 				continue
 			default:
-				log.Printf("unroceverable error")
-				panic("invalid kind")
+				log.Printf("invalid kind error")
 			}
 
 		}

@@ -44,7 +44,7 @@ func (c *OrionRegistryState) DispatchNewRouterEvent(
 
 	for _, router := range c.routers {
 		if router.Identity != newRouter.Identity {
-			router.Disatch(RouterConnectEvent{
+			router.Dispatch(RouterConnectEvent{
 				Router: newRouter,
 			})
 		}

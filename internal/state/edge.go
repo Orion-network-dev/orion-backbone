@@ -16,6 +16,7 @@ type Edge struct {
 
 	edgeObjectContext       context.Context
 	edgeObjectContextCancel context.CancelCauseFunc
+	seeded                  chan struct{}
 
 	globalState *OrionRegistryState
 	log         zerolog.Logger
@@ -69,6 +70,30 @@ func (c *Edge) Initialize() {
 	}()
 
 	c.log.Debug().Msg("edge instance started")
+
+	c.seeded = make(chan struct{})
+
+	// send a message to the routerA, requesting a new tunnel connection.
+	c.RouterA.Dispatch(CreateEdgeRequest{})
+
+	// wait for routerA to seed his tunnel information
+	<-c.seeded
+	c.seeded = make(chan struct{})
+
+	// send a message to the routerB, requesting a new tunnel connection.
+	c.RouterB.Dispatch(CreateEdgeRequest{})
+
+	// wait for routerB to seed his tunnel information
+	<-c.seeded
+
+	c.seeded = make(chan struct{})
+	c.RouterA.Dispatch(SeedEdgeRequest{})
+	<-c.seeded
+
+	c.seeded = make(chan struct{})
+	c.RouterB.Dispatch(SeedEdgeRequest{})
+	<-c.seeded
+	c.seeded = nil
 }
 
 func (c *Edge) Dispose() {

@@ -144,7 +144,7 @@ func (c *Router) updateConnectionsCountRoutine() {
 
 }
 
-func (c *Router) Disatch(router Event) {
+func (c *Router) Dispatch(router Event) {
 	value, err := MarshalEvent(router)
 	if err != nil {
 		log.Error().Err(err).Msg("couldn't dispatch new event")

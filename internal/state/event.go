@@ -35,7 +35,6 @@ func UnmarshalEvent(
 			return nil, err
 		}
 		return hello, nil
-	case MessageKindRouterEdgeConnectInitializeResponse:
 	case MessageKindRouterEdgeTeardown:
 
 		return nil, fmt.Errorf("not implemented")
@@ -77,7 +76,9 @@ func MarshalEvent(
 			Kind:    MessageKindRouterEdgeConnectInitializeRequest,
 			Content: bytes,
 		}, nil
-
+	case CreateEdgeRequest:
+	case CreateEdgeResponse:
+	case SeedEdgeRequest:
 	}
 
 	return nil, fmt.Errorf("event serialization not supported")
