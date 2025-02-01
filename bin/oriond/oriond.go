@@ -35,7 +35,6 @@ func main() {
 	flag.Parse()
 
 	// Default level for this example is info, unless debug flag is present
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	if *enable_prof {
 		go func() {
@@ -43,6 +42,7 @@ func main() {
 		}()
 	}
 	if *debug {
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 

@@ -1,1 +1,3 @@
-sysctl --system
+#!/bin/sh
+
+sysctl --system || true
