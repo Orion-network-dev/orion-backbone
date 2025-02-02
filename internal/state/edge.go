@@ -2,8 +2,11 @@ package state
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"slices"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -16,7 +19,6 @@ type Edge struct {
 
 	edgeObjectContext       context.Context
 	edgeObjectContextCancel context.CancelCauseFunc
-	seeded                  chan struct{}
 
 	globalState *OrionRegistryState
 	log         zerolog.Logger
@@ -53,21 +55,38 @@ func (c *Edge) EdgeId() EdgeIdentity {
 	return EdgeIdentity((uint64(ids[0])+1)<<32 + (uint64(ids[1]) + 1))
 }
 
-func (c *Edge) waitForSeed(token string) (*struct{}, error) {
-	for {
-		select {
-		case <-c.RouterA.routerObjectContext.Done():
-		case <-c.RouterB.routerObjectContext.Done():
-		case <-c.edgeObjectContext.Done():
-			c.seeded = nil
-			c.log.Debug().Err(c.edgeObjectContext.Err()).Msg("edge context is finished")
-			return nil, c.edgeObjectContext.Err()
-		case data := <-c.seeded:
-			c.seeded = nil
-			return &data, nil
-		}
+func (c *Edge) seedEdgeAndWait(
+	router *Router,
+	othrIdentity RouterIdentity,
+) (*CreateEdgeResponse, error) {
+	chanCallback := make(chan CreateEdgeResponse)
+	router.edgeResponseCallback = &chanCallback
+	// send a message to the routerA, requesting a new tunnel connection.
+	router.Dispatch(CreateEdgeRequest{
+		PeerID: othrIdentity,
+		EdgeID: c.EdgeId(),
+	})
+
+	ticker := time.NewTimer(time.Second * 60)
+	select {
+	case <-c.RouterA.routerObjectContext.Done():
+		goto end
+	case <-c.RouterB.routerObjectContext.Done():
+		goto end
+	case <-ticker.C:
+		goto end
+	case <-c.edgeObjectContext.Done():
+		goto end
+	case data := <-chanCallback:
+		router.edgeResponseCallback = nil
+		return &data, nil
 	}
 
+end:
+	router.edgeResponseCallback = nil
+	err := fmt.Errorf("timeout reached while waiting for seeding")
+	c.log.Debug().Err(err).Msg("timeout reached while waiting")
+	return nil, err
 }
 
 // Sends a new initialization step to both the peers
@@ -88,34 +107,61 @@ func (c *Edge) Initialize() {
 
 	c.log.Debug().Msg("edge instance started")
 
-	c.seeded = make(chan struct{})
-	// send a message to the routerA, requesting a new tunnel connection.
-	c.RouterA.Dispatch(CreateEdgeRequest{})
-	if _, err := c.waitForSeed("token!"); err == nil {
+	seedRouterA, err := c.seedEdgeAndWait(c.RouterA, c.RouterB.Identity)
+	if err != nil {
+		c.log.Err(err)
+		c.Dispose()
+		return
+	}
+	c.log.Debug().Msg("edge seeding (1/2)")
 
-	} else {
+	seedRouterB, err := c.seedEdgeAndWait(c.RouterB, c.RouterA.Identity)
+	if err != nil {
+		c.log.Err(err)
+		c.Dispose()
 		return
 	}
 
-	c.seeded = make(chan struct{})
-	// send a message to the routerB, requesting a new tunnel connection.
-	c.RouterB.Dispatch(CreateEdgeRequest{})
-	if _, err := c.waitForSeed("token!"); err == nil {
+	c.log.Debug().Msg("got initialzation data, seeding edges")
 
-	} else {
+	bytesA, err := base64.StdEncoding.DecodeString(seedRouterA.PresharedKeybB4)
+	if err != nil {
+		c.log.Err(err)
+		c.Dispose()
+		return
+	}
+	bytesB, err := base64.StdEncoding.DecodeString(seedRouterB.PresharedKeybB4)
+	if err != nil {
+		c.log.Err(err)
+		c.Dispose()
 		return
 	}
 
-	c.seeded = make(chan struct{})
-	c.RouterA.Dispatch(SeedEdgeRequest{})
+	var random [32]byte
+	for i := range 32 {
+		token := make([]byte, 1)
+		rand.Read(token)
+		random[i] = bytesA[i] ^ bytesB[i] ^ token[0]
+	}
 
-	c.seeded = make(chan struct{})
-	c.RouterB.Dispatch(SeedEdgeRequest{})
+	presharedKey := base64.StdEncoding.EncodeToString(random[:])
+
+	c.log.Debug().Msg("seeding edges")
+	c.RouterA.Dispatch(SeedEdgeRequest{
+		OtherPeer:    seedRouterB.PublicEndpoint,
+		PresharedKey: presharedKey,
+	})
+	c.RouterB.Dispatch(SeedEdgeRequest{
+		OtherPeer:    seedRouterB.PublicEndpoint,
+		PresharedKey: presharedKey,
+	})
 }
 
 func (c *Edge) Dispose() {
+	c.log.Debug().Msg("dispose")
 	c.globalState.DispatchEdgeRemovedEvent(c)
 }
 func (c *Edge) dispose() {
+	c.log.Debug().Msg("internal: disposing")
 	c.edgeObjectContextCancel(fmt.Errorf("edge is finished"))
 }

@@ -23,7 +23,9 @@ type Router struct {
 	connectionsCount               atomic.Int32
 	connectionTimeoutContextCancel context.CancelCauseFunc
 	PendingTeardown                bool   `json:"pendingTeardown"`
-	Session                        string `json:"_session"`
+	Session                        string `json:"-"`
+
+	edgeResponseCallback *chan CreateEdgeResponse
 
 	globalState *OrionRegistryState
 	log         zerolog.Logger
@@ -163,4 +165,16 @@ func (c *Router) dispose() {
 
 func (c *Router) Dispose() {
 	c.globalState.DispatchRouterRemovedEvent(c)
+}
+
+func (c *Router) EdgeResponseCallback(
+	response CreateEdgeResponse,
+) {
+	fmt.Println("got edge response callback")
+	if c.edgeResponseCallback != nil {
+		(*c.edgeResponseCallback) <- response
+	} else {
+
+		fmt.Println("ignored because no handler")
+	}
 }

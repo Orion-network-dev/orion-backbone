@@ -33,7 +33,7 @@ Vagrant.configure("2") do |config|
         sed -i "s/pimd=no/pimd=yes/g" /etc/frr/daemons
         sed -i "s/pim6d=no/pim6d=yes/g" /etc/frr/daemons
         systemctl restart frr
-        cp /vagrant/secret/node#{n}/identity.pem /etc/oriond/identity.pem
+        cp /vagrant/secret/node#{n}/oriond/identity.pem /etc/oriond/identity.pem
         echo "192.168.50.200 reg.orionet.re" \> /etc/hosts
         systemctl enable --now oriond
       }

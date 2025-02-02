@@ -98,20 +98,35 @@ func main() {
 			}
 
 			switch message := out.(type) {
-			case state.Hello:
+			case *state.Hello:
 				log.Printf("Hello message: %s", message.Message)
 				continue
-			case state.RouterConnectEvent:
+			case *state.RouterConnectEvent:
 				log.Printf("router joined: %d", message.Router.Identity)
 
 				ev, _ := state.MarshalEvent(state.RouterInitiateRequest{
 					Identity: &message.Router.Identity,
 				})
 				c.WriteJSON(ev)
+				continue
+			case *state.CreateEdgeRequest:
+				log.Printf("create edge request received")
 
+				ev, err := state.MarshalEvent(state.CreateEdgeResponse{
+					PublicEndpoint: state.Endpoint{
+						Address:    "localhost",
+						PublicPort: 9999,
+					},
+					PresharedKeybB4: "Z3LBJMtWxoqPyR/XkGJkbdVUnzLZRkv215El6XuGpLc=",
+				})
+				if err != nil {
+					panic(err)
+				}
+
+				c.WriteJSON(ev)
 				continue
 			default:
-				log.Printf("invalid kind error")
+				log.Printf("invalid kind error: %s %T", msg.Kind, out)
 			}
 
 		}

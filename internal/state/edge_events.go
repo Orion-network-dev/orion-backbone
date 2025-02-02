@@ -1,22 +1,21 @@
 package state
 
-type NewEdgeEvent struct {
-	Router *Edge
+type CreateEdgeRequest struct {
+	PeerID RouterIdentity // other user id
+	EdgeID EdgeIdentity   // edge object id
 }
 
-type AskForNewEdge struct {
-	OtherNode *Router
+type Endpoint struct {
+	Address    string // v4 address
+	PublicPort uint16
 }
 
-type CreateEdgeRequest struct{}
-type CreateEdgeResponse struct{}
-
-type SeedEdgePeer struct {
-	PublicKey    string
-	PresharedKey string
-	DefaultRoute bool
+type CreateEdgeResponse struct {
+	PublicEndpoint  Endpoint
+	PresharedKeybB4 string
 }
 
 type SeedEdgeRequest struct {
-	Peers []SeedEdgePeer
+	OtherPeer    Endpoint
+	PresharedKey string
 }

@@ -131,7 +131,7 @@ func (c *Client) startRoutine(sessionId string) {
 
 			switch message := out.(type) {
 			// sent once a router wants to connect to another one
-			case state.RouterInitiateRequest:
+			case *state.RouterInitiateRequest:
 				c.log.Info().Msgf("received a router connect event to %d", *message.Identity)
 
 				routers := OrionRegistryState.GetRouters()
@@ -144,6 +144,10 @@ func (c *Client) startRoutine(sessionId string) {
 				)
 
 				continue
+			case *state.CreateEdgeResponse:
+				c.log.Info().Msgf("got create edge response")
+				c.router.EdgeResponseCallback(*message)
+				continue
 			default:
 				c.log.Error().Str("event", event.Kind).Msg("unknown event type")
 				goto end
@@ -152,6 +156,7 @@ func (c *Client) startRoutine(sessionId string) {
 
 	end:
 		cancel(fmt.Errorf("the websocket listening is finished"))
+		c.log.Error().Msg("event handler is finished")
 	}()
 
 	// wait for the context to be finished
