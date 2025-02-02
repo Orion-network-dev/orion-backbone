@@ -71,7 +71,7 @@ nfpms:
       postinstall: ./packaging/postinstall.sh
 
     # Version Release.
-    release: 1
+    release: "1"
 
     # Section.
     section: default
