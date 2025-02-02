@@ -3,6 +3,7 @@ package state
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 )
 
 // Meta interface holding the different events
@@ -41,8 +42,6 @@ func UnmarshalEvent(
 	default:
 		return nil, fmt.Errorf("unknown event for deserialize")
 	}
-
-	return nil, fmt.Errorf("not implemented")
 }
 
 func MarshalEvent(
@@ -77,9 +76,26 @@ func MarshalEvent(
 			Content: bytes,
 		}, nil
 	case CreateEdgeRequest:
+		bytes, err := json.Marshal(event)
+		if err != nil {
+			return nil, err
+		}
+		return &JsonEvent{
+			Kind:    MessageKindCreateEdgeRequest,
+			Content: bytes,
+		}, nil
 	case CreateEdgeResponse:
+		bytes, err := json.Marshal(event)
+		if err != nil {
+			return nil, err
+		}
+		return &JsonEvent{
+			Kind:    MessageKindCreateEdgeResponse,
+			Content: bytes,
+		}, nil
 	case SeedEdgeRequest:
+
 	}
 
-	return nil, fmt.Errorf("event serialization not supported")
+	return nil, fmt.Errorf("event serialization not supported %s", reflect.TypeOf(event))
 }

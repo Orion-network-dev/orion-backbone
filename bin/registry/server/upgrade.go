@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
@@ -18,6 +19,12 @@ func upgradeErrorPage(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/html")
 	w.Write(file)
+}
+
+func (c *Server) state(w http.ResponseWriter, r *http.Request) {
+	s, _ := json.Marshal(protocol.OrionRegistryState)
+	w.Header().Add("Content-Type", "application/json")
+	w.Write(s)
 }
 
 func (c *Server) upgrade(w http.ResponseWriter, r *http.Request) {

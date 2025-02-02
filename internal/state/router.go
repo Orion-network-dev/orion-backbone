@@ -22,8 +22,8 @@ type Router struct {
 	routerObjectContextCancel      context.CancelCauseFunc
 	connectionsCount               atomic.Int32
 	connectionTimeoutContextCancel context.CancelCauseFunc
-	pendingTeardown                bool
-	session                        string
+	PendingTeardown                bool   `json:"pendingTeardown"`
+	Session                        string `json:"_session"`
 
 	globalState *OrionRegistryState
 	log         zerolog.Logger
@@ -55,14 +55,14 @@ func NewRouter(
 		routerObjectContext:       ctx,
 		routerObjectContextCancel: cancel,
 		globalState:               globalState,
-		session:                   session,
+		Session:                   session,
 		log:                       logger,
-		pendingTeardown:           false,
+		PendingTeardown:           false,
 	}
 }
 
 func (c *Router) SessionId() string {
-	return c.session
+	return c.Session
 }
 
 func (c *Router) Subscribe() *broadcast.Listener[*JsonEvent] {
@@ -79,7 +79,7 @@ func (c *Router) DecrementConnectionCount() {
 }
 
 func (c *Router) updateConnectionsCountRoutine() {
-	if c.pendingTeardown {
+	if c.PendingTeardown {
 		return
 	}
 	current := c.connectionsCount.Load()
@@ -94,6 +94,7 @@ func (c *Router) updateConnectionsCountRoutine() {
 	if current == 0 {
 		ctx, e := context.WithCancelCause(context.Background())
 		c.connectionTimeoutContextCancel = e
+		c.PendingTeardown = true
 
 		// we launch a background task ticking for either
 		// 	1. the session timeout mechanism
@@ -128,6 +129,7 @@ func (c *Router) updateConnectionsCountRoutine() {
 							break
 						}
 					}
+					c.PendingTeardown = false
 					goto end
 				case <-timeout.C:
 					log.Debug().Msg("session expired")
@@ -154,7 +156,6 @@ func (c *Router) Dispatch(router Event) {
 }
 
 func (c *Router) dispose() {
-	c.pendingTeardown = true
 	c.routerObjectContextCancel(fmt.Errorf("router is disposed"))
 	c.log.Debug().Msg("context canceled")
 	c.sending.Close()

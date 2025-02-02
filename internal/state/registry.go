@@ -13,24 +13,24 @@ type OrionRegistryEdgesState map[EdgeIdentity]*Edge
 // component, that handles all the connection
 // initialization system.
 type OrionRegistryState struct {
-	routers     OrionRegistryRoutersState // List of routers
+	Routers     OrionRegistryRoutersState `json:"routers"` // List of routers
 	routersLock sync.Mutex
 
-	edges     OrionRegistryEdgesState // List of edges in the orion graph
+	Edges     OrionRegistryEdgesState `json:"edges"` // List of edges in the orion graph
 	edgesLock sync.Mutex
 }
 
 func NewOrionRegistryState() *OrionRegistryState {
 	return &OrionRegistryState{
-		routers:     make(OrionRegistryRoutersState),
+		Routers:     make(OrionRegistryRoutersState),
 		routersLock: sync.Mutex{},
-		edges:       make(OrionRegistryEdgesState),
+		Edges:       make(OrionRegistryEdgesState),
 		edgesLock:   sync.Mutex{},
 	}
 }
 
 func (c *OrionRegistryState) GetRouters() OrionRegistryRoutersState {
-	return c.routers
+	return c.Routers
 }
 
 // Called once a new member is joining the network
@@ -40,9 +40,9 @@ func (c *OrionRegistryState) DispatchNewRouterEvent(
 	c.routersLock.Lock()
 	defer c.routersLock.Unlock()
 
-	c.routers[RouterIdentity(newRouter.Identity)] = newRouter
+	c.Routers[RouterIdentity(newRouter.Identity)] = newRouter
 
-	for _, router := range c.routers {
+	for _, router := range c.Routers {
 		if router.Identity != newRouter.Identity {
 			router.Dispatch(RouterConnectEvent{
 				Router: newRouter,
@@ -55,15 +55,15 @@ func (c *OrionRegistryState) DispatchNewRouterEvent(
 func (c *OrionRegistryState) DispatchRouterRemovedEvent(
 	deletedRouter *Router,
 ) {
-	if c.routers[deletedRouter.Identity] == nil {
+	if c.Routers[deletedRouter.Identity] == nil {
 		return
 	}
 
 	c.routersLock.Lock()
 	defer c.routersLock.Unlock()
 
-	c.routers[deletedRouter.Identity].dispose()
-	c.routers[deletedRouter.Identity] = nil
+	c.Routers[deletedRouter.Identity].dispose()
+	delete(c.Routers, deletedRouter.Identity)
 }
 
 // Dispatch new connection
@@ -80,28 +80,28 @@ func (c *OrionRegistryState) DispatchNewEdge(
 	}
 
 	c.edgesLock.Lock()
-	defer c.edgesLock.Unlock()
-
 	// concatenate the bits
 	edgeId := edge.EdgeId()
-	c.edges[edgeId] = edge
+	c.Edges[edgeId] = edge
+
+	c.edgesLock.Unlock()
 
 	edge.Initialize()
 }
 
 func (c *OrionRegistryState) DispatchEdgeRemovedEvent(edge *Edge) {
-	log.Debug().Msg("edge got removed")
-
-	if c.edges[edge.EdgeId()] == nil {
+	if c.Edges[edge.EdgeId()] == nil {
 		return
 	}
+	log.Debug().Int32("edge-id", int32(edge.EdgeId())).Msg("edge got removed")
 
 	c.edgesLock.Lock()
 	defer c.edgesLock.Unlock()
+	log.Debug().Int32("edge-id", int32(edge.EdgeId())).Msg("edge got removed")
 
 	// edge.RouterA.DispatchEdgeRemovedEvent(edge)
 	// edge.RouterB.DispatchEdgeRemovedEvent(edge)
 
-	c.edges[edge.EdgeId()].dispose()
-	c.edges[edge.EdgeId()] = nil
+	c.Edges[edge.EdgeId()].dispose()
+	delete(c.Edges, edge.EdgeId())
 }

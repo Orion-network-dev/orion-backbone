@@ -18,7 +18,7 @@ var (
 	pprof         = flag.String("debug-pprof", "127.0.0.1:6060", "")
 	enable_prof   = flag.Bool("enable-pprof", false, "enable pprof for debugging")
 	debug         = flag.Bool("debug", false, "change the log level to debug")
-	listeningHost = flag.String("listen-host", "127.0.0.1:6443", "the port the server will listen on")
+	listeningHost = flag.String("listen-host", "0.0.0.0:64431", "the port the server will listen on")
 )
 
 func main() {
@@ -51,10 +51,6 @@ func main() {
 		MinVersion:       tls.VersionTLS13,
 		CurvePreferences: []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
 		CipherSuites: []uint16{
-			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-			tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
-			tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
-			tls.TLS_RSA_WITH_AES_256_CBC_SHA,
 			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
 		},

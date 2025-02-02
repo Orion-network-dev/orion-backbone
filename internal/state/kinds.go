@@ -10,6 +10,9 @@ const (
 	MessageKindRouterConnect = "new_router"
 	// Sent by a peer that wants to initialize a new peer-to-peer link
 	MessageKindRouterEdgeConnectInitializeRequest = "edge_initialize_request"
+	MessageKindCreateEdgeRequest                  = "edge_create_edge_request"
+	MessageKindCreateEdgeResponse                 = "edge_create_edge_response"
+	MessageKindSeedEdgeRequest                    = "edge_seed_request"
 
 	// Event emitted once an edge is destroyed
 	MessageKindRouterEdgeTeardown = "edge_teardown"

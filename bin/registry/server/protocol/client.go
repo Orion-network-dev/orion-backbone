@@ -12,7 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var orionRegistryState *state.OrionRegistryState = state.NewOrionRegistryState()
+var OrionRegistryState *state.OrionRegistryState = state.NewOrionRegistryState()
 
 type Client struct {
 	ctx      context.Context
@@ -48,13 +48,13 @@ func (c *Client) startRoutine(sessionId string) {
 	c.log.Debug().Msg("connection handling routine started")
 
 	// check if the router exists
-	rtrs := orionRegistryState.GetRouters()
+	rtrs := OrionRegistryState.GetRouters()
 	rtr := rtrs[c.identity]
 	if rtr == nil {
 		c.log.Debug().Msg("initialized a new state plane router object")
-		rtr = state.NewRouter(context.Background(), c.identity, orionRegistryState)
+		rtr = state.NewRouter(context.Background(), c.identity, OrionRegistryState)
 		// dispatch new router if the given router doesn't exist
-		orionRegistryState.DispatchNewRouterEvent(
+		OrionRegistryState.DispatchNewRouterEvent(
 			rtr,
 		)
 	} else {
@@ -67,9 +67,9 @@ func (c *Client) startRoutine(sessionId string) {
 		} else {
 			c.log.Debug().Msg("deleted old session, initializing new session")
 			rtr.Dispose()
-			rtr = state.NewRouter(context.Background(), c.identity, orionRegistryState)
+			rtr = state.NewRouter(context.Background(), c.identity, OrionRegistryState)
 			// dispatch new router if the given router doesn't exist
-			orionRegistryState.DispatchNewRouterEvent(
+			OrionRegistryState.DispatchNewRouterEvent(
 				rtr,
 			)
 		}
@@ -134,13 +134,13 @@ func (c *Client) startRoutine(sessionId string) {
 			case state.RouterInitiateRequest:
 				c.log.Info().Msgf("received a router connect event to %d", *message.Identity)
 
-				routers := orionRegistryState.GetRouters()
+				routers := OrionRegistryState.GetRouters()
 				if routers[*message.Identity] == nil || routers[c.identity] == nil {
 					goto end
 				}
 
-				orionRegistryState.DispatchNewEdge(
-					state.NewEdge(context.Background(), routers[*message.Identity], routers[c.identity], orionRegistryState),
+				OrionRegistryState.DispatchNewEdge(
+					state.NewEdge(context.Background(), routers[*message.Identity], routers[c.identity], OrionRegistryState),
 				)
 
 				continue

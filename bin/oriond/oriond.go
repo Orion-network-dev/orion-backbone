@@ -21,7 +21,7 @@ import (
 var (
 	enable_prof    = flag.Bool("enable-pprof", false, "enable pprof for debugging")
 	debug          = flag.Bool("debug", false, "change the log level to debug")
-	registryServer = flag.String("registry-server", "reg.orionet.re:6443", "the address of the registry server")
+	registryServer = flag.String("registry-server", "reg.orionet.re:64431", "the address of the registry server")
 	pprof          = flag.String("debug-pprof", "0.0.0.0:6061", "")
 )
 
