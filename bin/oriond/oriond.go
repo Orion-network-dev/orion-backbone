@@ -1,8 +1,8 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
@@ -11,52 +11,54 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/MatthieuCoder/OrionV3/internal"
-	"github.com/MatthieuCoder/OrionV3/internal/state"
 	"github.com/gorilla/websocket"
+	"github.com/orion-network-dev/orion-backbone/bin/oriond/implementation"
+	"github.com/orion-network-dev/orion-backbone/internal"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
 var (
-	enable_prof    = flag.Bool("enable-pprof", false, "enable pprof for debugging")
 	debug          = flag.Bool("debug", false, "change the log level to debug")
 	registryServer = flag.String("registry-server", "reg.orionet.re:64431", "the address of the registry server")
-	pprof          = flag.String("debug-pprof", "0.0.0.0:6061", "")
 )
 
 func main() {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// listen for interrupts
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
-	// Setup logging
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+
+	// parse all command flags
 	flag.Parse()
 
-	// Default level for this example is info, unless debug flag is present
+	// setup the time format used by the logger
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixMs
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	if *enable_prof {
-		go func() {
-			fmt.Println(http.ListenAndServe(*pprof, nil))
-		}()
-	}
+
+	// if the debug lag is used, we set the logging level to debug
 	if *debug {
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	}
 
-	url := url.URL{
-		Scheme: "wss",
-		Host:   *registryServer,
-		Path:   "/ws",
-	}
+	// we print the version information
+	internal.PrintVersionHeader()
 
+	oriond, err := implementation.NewOrionClientDaemon(ctx)
+	defer oriond.Dispose()
+
+	// We load the required certificates
 	privateKey, chain := internal.LoadPemFile()
 	certificateKeyPair := internal.LoadX509KeyPair(privateKey, chain)
 	authorityPool, err := internal.LoadAuthorityPool()
 	if err != nil {
-		panic(err)
+		log.Fatal().Err(err).Msg("failed to load the required certificates")
+		return
 	}
 
+	// information required to connect to the registry over websocket
 	dialer := &websocket.Dialer{
 		Proxy:            http.ProxyFromEnvironment,
 		HandshakeTimeout: 45 * time.Second,
@@ -66,97 +68,30 @@ func main() {
 			MinVersion:   tls.VersionTLS13,
 			MaxVersion:   tls.VersionTLS13,
 		},
-		Subprotocols: []string{"orion-reg-rpc"},
+		Subprotocols: []string{fmt.Sprintf("orion-registry-%s", internal.Commit)},
+	}
+	url := url.URL{
+		Scheme: "wss",
+		Host:   *registryServer,
+		Path:   "/ws",
 	}
 
-	c, _, err := dialer.Dial(url.String(), nil)
+	// we dial the registry server, initializing the tls1.3 connection
+	connection, _, err := dialer.Dial(url.String(), nil)
 	if err != nil {
-		log.Fatal().Msgf("dial: %s", err)
+		log.Fatal().Err(err).Msgf("unsable to dial")
 	}
-	defer c.Close()
+	defer connection.Close()
 
-	done := make(chan struct{})
+	// we initialize the oriond daemon to handle the websocket messages
+	oriond.ListenOnWS(connection)
 
-	go func() {
-		defer close(done)
-		for {
-			_, message, err := c.ReadMessage()
-			if err != nil {
-				log.Print("read:", err)
-				return
-			}
-			log.Printf("recv: %s", message)
-
-			msg := state.JsonEvent{}
-			json.Unmarshal(message, &msg)
-
-			log.Printf("received %s... handling", msg.Kind)
-
-			out, err := state.UnmarshalEvent(msg)
-			if err != nil {
-				log.Print("read:", err)
-			}
-
-			switch message := out.(type) {
-			case *state.Hello:
-				log.Printf("Hello message: %s", message.Message)
-				continue
-			case *state.RouterConnectEvent:
-				log.Printf("router joined: %d", message.Router.Identity)
-
-				ev, _ := state.MarshalEvent(state.RouterInitiateRequest{
-					Identity: &message.Router.Identity,
-				})
-				c.WriteJSON(ev)
-				continue
-			case *state.CreateEdgeRequest:
-				log.Printf("create edge request received")
-
-				ev, err := state.MarshalEvent(state.CreateEdgeResponse{
-					PublicEndpoint: state.Endpoint{
-						Address:    "localhost",
-						PublicPort: 9999,
-					},
-					PresharedKeybB4: "Z3LBJMtWxoqPyR/XkGJkbdVUnzLZRkv215El6XuGpLc=",
-				})
-				if err != nil {
-					panic(err)
-				}
-
-				c.WriteJSON(ev)
-				continue
-			default:
-				log.Printf("invalid kind error: %s %T", msg.Kind, out)
-			}
-
-		}
-	}()
-
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-
-		case <-done:
-			return
-		case <-interrupt:
-			log.Print("interrupt")
-
-			// Cleanly close the connection by sending a close message and then
-			// waiting (with timeout) for the server to close the connection.
-			err := c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-			if err != nil {
-				log.Print("write close:", err)
-				return
-			}
-			select {
-			case <-done:
-			case <-time.After(time.Second):
-			}
-			return
-		}
+	select {
+	case <-ctx.Done():
+		return
+	case <-interrupt:
+		cancel()
+		<-ctx.Done()
+		return
 	}
-
 }

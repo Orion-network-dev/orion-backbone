@@ -12,7 +12,7 @@ Vagrant.configure("2") do |config|
   SHELL
 
   config.vm.define "registry" do |registry|
-    registry.vm.network "private_network", ip: "192.168.50.200"
+    registry.vm.network "private_network", ip: "192.168.10.200"
     registry.vm.hostname = "registry"
 
     registry.vm.provision "shell", inline: <<-SHELL
@@ -25,7 +25,7 @@ Vagrant.configure("2") do |config|
   # Provision two orion node VMs 
   (0..1).each do |n| 
     config.vm.define "node#{n}" do |node|
-      node.vm.network "private_network", ip: "192.168.50.1#{n}"
+      node.vm.network "private_network", ip: "192.168.10.1#{n}"
       node.vm.hostname = "node#{n}"
   
       node.vm.provision "shell", inline: %{
@@ -34,7 +34,7 @@ Vagrant.configure("2") do |config|
         sed -i "s/pim6d=no/pim6d=yes/g" /etc/frr/daemons
         systemctl restart frr
         cp /vagrant/secret/node#{n}/oriond/identity.pem /etc/oriond/identity.pem
-        echo "192.168.50.200 reg.orionet.re" \> /etc/hosts
+        echo "192.168.10.200 reg.orionet.re" \> /etc/hosts
         systemctl enable --now oriond
       }
     end

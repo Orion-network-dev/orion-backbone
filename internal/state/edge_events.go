@@ -8,6 +8,7 @@ type CreateEdgeRequest struct {
 type Endpoint struct {
 	Address    string // v4 address
 	PublicPort uint16
+	PublicKey  string
 }
 
 type CreateEdgeResponse struct {

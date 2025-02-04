@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/MatthieuCoder/OrionV3/bin/registry/server"
-	"github.com/MatthieuCoder/OrionV3/internal"
+	"github.com/orion-network-dev/orion-backbone/bin/registry/server"
+	"github.com/orion-network-dev/orion-backbone/internal"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )

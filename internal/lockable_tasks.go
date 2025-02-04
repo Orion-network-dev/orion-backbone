@@ -28,6 +28,7 @@ func NewLockableTasks(tasksCount int) LockableTasks {
 		concurrentTaskCount: tasksCount,
 	}
 }
+
 func (r *LockableTasks) AssignSessionId(ctx context.Context) (*Task, error) {
 	ticker := time.NewTicker(time.Millisecond)
 	counter := 0

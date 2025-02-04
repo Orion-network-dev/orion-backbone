@@ -12,7 +12,7 @@ import (
 
 type WireguardInterface struct {
 	WgLink   WireguardNetLink
-	wgconfig wgtypes.Config
+	WgConfig wgtypes.Config
 	lock     sync.Mutex
 }
 
@@ -57,10 +57,10 @@ func (c *WireguardInterface) SetPeers(wg *wgctrl.Client, peers []wgtypes.PeerCon
 	defer c.lock.Unlock()
 
 	log.Debug().Str("interface", c.WgLink.InterfaceAttrs.Name).Msg("updating peers on interface")
-	c.wgconfig.Peers = peers
-	c.wgconfig.ReplacePeers = true
+	c.WgConfig.Peers = peers
+	c.WgConfig.ReplacePeers = true
 
-	if err := wg.ConfigureDevice(c.WgLink.InterfaceAttrs.Name, c.wgconfig); err != nil {
+	if err := wg.ConfigureDevice(c.WgLink.InterfaceAttrs.Name, c.WgConfig); err != nil {
 		log.Error().Err(err).Msg("failed to apply the wireguard configuration")
 		netlink.LinkDel(c.WgLink)
 		return err

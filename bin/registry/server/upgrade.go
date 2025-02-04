@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/MatthieuCoder/OrionV3/bin/registry/server/protocol"
-	"github.com/MatthieuCoder/OrionV3/internal/state"
 	"github.com/gorilla/websocket"
+	"github.com/orion-network-dev/orion-backbone/bin/registry/server/protocol"
+	"github.com/orion-network-dev/orion-backbone/internal/state"
 	"github.com/rs/zerolog/log"
 )
 

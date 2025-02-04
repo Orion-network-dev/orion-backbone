@@ -141,7 +141,7 @@ func (c *Edge) Initialize() {
 	for i := range 32 {
 		token := make([]byte, 1)
 		rand.Read(token)
-		random[i] = bytesA[i] ^ bytesB[i] ^ token[0]
+		random[i] = (bytesA[i] ^ bytesB[i]) | token[0]
 	}
 
 	presharedKey := base64.StdEncoding.EncodeToString(random[:])

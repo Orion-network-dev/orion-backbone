@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/MatthieuCoder/OrionV3/internal"
-	"github.com/MatthieuCoder/OrionV3/internal/state"
 	"github.com/gorilla/websocket"
+	"github.com/orion-network-dev/orion-backbone/internal"
+	"github.com/orion-network-dev/orion-backbone/internal/state"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
