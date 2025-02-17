@@ -11,7 +11,6 @@ interface orion{{ .OrionId }}
 !
 router bgp {{ .ASN }}
  no bgp network import-check
- bgp ipv6-auto-ra
  bgp default ipv4-multicast
  bgp router-id 192.168.255.{{ .OrionId }}
 {{ range .Groups }}
