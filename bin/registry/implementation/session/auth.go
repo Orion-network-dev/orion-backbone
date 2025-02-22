@@ -1,7 +1,6 @@
 package session
 
 import (
-	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/x509"
@@ -13,7 +12,6 @@ import (
 	"github.com/MatthieuCoder/OrionV3/internal"
 	"github.com/MatthieuCoder/OrionV3/internal/proto"
 	"github.com/rs/zerolog/log"
-	"software.sslmate.com/src/ocsputil"
 )
 
 func generateRandomString(n int) (string, error) {
@@ -86,14 +84,14 @@ func (c *Session) Authenticate(
 		return err
 	}
 
-	revoked, _, _ := ocsputil.CheckCert(context.Background(), userCertificate, issuer, &ocsputil.Config{})
-	if revoked {
-		err := fmt.Errorf("certificate is revoked")
-		log.Error().
-			Err(err).
-			Msg("certificate is revoked")
-		return err
-	}
+	// revoked, _, _ := ocsputil.CheckCert(context.Background(), userCertificate, issuer, &ocsputil.Config{})
+	// if revoked {
+	// 	err := fmt.Errorf("certificate is revoked")
+	// 	log.Error().
+	// 		Err(err).
+	// 		Msg("certificate is revoked")
+	// 	return err
+	// }
 
 	log.Debug().
 		Msgf("Certificate verification succesful, checking common names (%d memberid => %s common name ?)", Event.MemberId, userCertificate.Subject.CommonName)
