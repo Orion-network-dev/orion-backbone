@@ -56,5 +56,3 @@ google.golang.org/grpc v1.67.1 h1:zWnc1Vrcno+lHZCOofnIMvycFcc0QRGIzm9dhnDX68E=
 google.golang.org/grpc v1.67.1/go.mod h1:1gLDyUQU7CTLJI90u3nXZ9ekeghjeM7pTDZlqFNg2AA=
 google.golang.org/protobuf v1.34.2 h1:6xV6lTsCfpGD21XK49h7MhtcApnLqkfYgPcdHftf6hg=
 google.golang.org/protobuf v1.34.2/go.mod h1:qYOHts0dSfpeUzUFpOMr/WGzszTmLH+DiWniOlNbLDw=
-software.sslmate.com/src/ocsputil v0.5.0 h1:mJrX5z7XbHyVFqTpDvCWy+8KuCLn1Dro+5tUoFhix7I=
-software.sslmate.com/src/ocsputil v0.5.0/go.mod h1:cYsyBW9ycE4100TeKI8zqFy74W6/LIj95hZXoh0UBm4=
