@@ -39,8 +39,8 @@ func (c *PeerLink) updateWeights() error {
 	metric := math.Max(float64(0), float64(int64(500)-latency.Milliseconds()))
 	peer := c.frrManager.GetPeer(c.otherID)
 	peer.Weight = uint32(metric)
-	c.frrManager.UpdatePeer(c.otherID, peer)
-	c.frrManager.Update()
+	// c.frrManager.UpdatePeer(c.otherID, peer)
+	// c.frrManager.Update()
 
 	return nil
 }
